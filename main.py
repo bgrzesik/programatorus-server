@@ -1,18 +1,16 @@
-from menu import *
-
-from pair import PairDialog
+import socket
 from datetime import datetime
-import Adafruit_SSD1306
 
-from PIL import Image, ImageFont, ImageDraw
+import Adafruit_SSD1306
+from PIL import ImageDraw
 from gpiozero import Button
 
-import socket
+from server.comm.transport.bt import BTServer
+from server.target.demo_store import get_files
+from server.ui.menu import *
+from server.ui.pair import PairDialog
+from server.target.request_handler import *
 
-from demo_store import get_files
-from bt_server import BTServer
-from request_handler import *
-from SessionController import FlashService
 
 class TimeMenuItem(MenuItem):
     def __init__(self):
@@ -53,6 +51,7 @@ class IpMenuItem(MenuItem):
         except:
             return "Get IP error"
 
+
 class ProgramFlashMenuItem(MenuItem):
     def __init__(self, file_name, proxy):
         self.file_name = file_name
@@ -60,12 +59,13 @@ class ProgramFlashMenuItem(MenuItem):
         MenuItem.__init__(self, file_name)
 
     def on_click(self, select=True):
-        self.proxy.start_async("flash", { 'board': 'rp2040.cfg', 'target': self.file_name })
+        self.proxy.start_async("flash", {'board': 'rp2040.cfg', 'target': self.file_name})
+
 
 def main():
     fs = FlashService()
-    requestHandler = RequestHandler.serve(fs)
-    proxy = Proxy.serve(requestHandler)
+    request_handler = RequestHandler.serve(fs)
+    proxy = Proxy.serve(request_handler)
     server = BTServer(proxy)
     server.start()
 

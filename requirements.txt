@@ -1,0 +1,6 @@
+Pillow~=9.2.0
+gpiozero~=1.6.2b
+Adafruit-SSD1306~=1.6.2
+PyBluez~=0.23
+pexpect~=4.8.0
+RPi.GPIO~=0.7.1

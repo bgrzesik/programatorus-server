@@ -3,6 +3,7 @@ from PIL import ImageFont, Image
 FONT = ImageFont.truetype('/home/pi/slkscr.ttf', 8)
 BOTTOM_BAR = Image.open('/home/pi/bootloader/bar.png')
 
+
 class Menu(object):
     def __init__(self, items, y_wrap=64):
         self.items = items
@@ -54,7 +55,7 @@ class Menu(object):
 class MenuItem(object):
     def __init__(self, text):
         self.text = text
-        self.width = 64
+        self.width = 127
         self.height = 8
         self.is_selected = False
 

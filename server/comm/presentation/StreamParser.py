@@ -1,4 +1,4 @@
-from message_utils import *
+from server.comm.presentation.message_utils import *
 
 class StreamParser:
 
