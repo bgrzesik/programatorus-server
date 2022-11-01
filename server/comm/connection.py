@@ -25,6 +25,10 @@ class IConnection(object):
     def disconnect(self):
         raise NotImplementedError
 
+    @property
+    def supports_reconnecting(self):
+        return False
+
 
 class IConnectionClient(object):
 
@@ -37,9 +41,9 @@ class IConnectionClient(object):
 
 class AbstractConnection(IConnection, ABC):
 
-    def __init__(self, client: IConnectionClient):
+    def __init__(self, client):
         self._state: ConnectionState = ConnectionState.DISCONNECTED
-        self.client = client
+        self._client: IConnectionClient = client
 
     @property
     def state(self) -> ConnectionState:
@@ -48,6 +52,6 @@ class AbstractConnection(IConnection, ABC):
     @state.setter
     def state(self, value):
         if self._state != value:
+            logging.debug(f"state(): {self._state} -> {value}")
             self._state = value
-            self.client.on_state_changed(value)
-            logging.debug("")
+            self._client.on_state_changed(value)

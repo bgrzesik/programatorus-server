@@ -1,7 +1,10 @@
+import os
+
 from PIL import ImageFont, Image
 
-FONT = ImageFont.truetype('/home/pi/slkscr.ttf', 8)
-BOTTOM_BAR = Image.open('/home/pi/bootloader/bar.png')
+base_dir = os.path.dirname(os.path.realpath(__file__))
+BOTTOM_BAR = Image.open(os.path.join(base_dir, 'bar.png'))
+FONT = ImageFont.truetype(os.path.join(base_dir, 'slkscr.ttf'), 8)
 
 
 class Menu(object):

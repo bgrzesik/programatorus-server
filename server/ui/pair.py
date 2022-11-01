@@ -1,4 +1,4 @@
-from server.comm.transport.bt import PairThread, INACTIVE, AGENT_SETUP, AWAITING_CONNECTION
+from server.comm.transport.bt_deprecated import PairThread, INACTIVE, AGENT_SETUP, AWAITING_CONNECTION
 from server.ui.menu import *
 
 
