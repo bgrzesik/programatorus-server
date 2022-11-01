@@ -1,5 +1,6 @@
 from server.comm.presentation.message_utils import *
 
+
 class StreamParser:
 
     def __init__(self):
@@ -7,7 +8,7 @@ class StreamParser:
 
     def parse(self, bytes):
         self.buffer += bytes.rstrip()
-        if(HEADER_LEN[self.buffer[0]] > len(self.buffer)):
+        if (HEADER_LEN[self.buffer[0]] > len(self.buffer)):
             return None
 
         msg_len = int.from_bytes(self.buffer[1:5], byteorder='big')
