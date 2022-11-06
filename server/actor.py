@@ -146,8 +146,8 @@ class Actor(object):
             def wrapper(*args, **kwargs):
                 self: Actor = args[0]
                 if not self.is_actor_thread():
-                    assert self.is_actor_thread()
                     logging.warning(f"{func} was called on invalid non-actor thread")
+                    assert self.is_actor_thread()
                     if hard:
                         raise SystemError
 

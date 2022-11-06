@@ -1,26 +1,52 @@
 import functools
 import logging
+from concurrent.futures import Future
 
 from server.comm.connection import ConnectionState
 from server.comm.listener.bt import BluetoothListener
 from server.comm.listener.listener import IListenerClient
-from server.comm.presentation.messenger import IMessageClient, Messenger
+from server.comm.presentation.messenger import Messenger, IMessageClient
 from server.comm.presentation.protocol_messenger import ProtocolMessenger
 from server.comm.presentation.protocol_pb2 import GenericMessage, TestMessage
+from server.comm.session.session import ISessionClient, Session
+
+from google.protobuf.empty_pb2 import Empty as EmptyProto
 
 
-class Client(IListenerClient, IMessageClient):
+# class Client(IListenerClient, IMessageClient):
+#
+#     def on_message_received(self, message: GenericMessage):
+#         logging.info(f"on_message_received() message={message}")
+#         self.messenger.send(GenericMessage(responseId=message.requestId, sessionId=message.sessionId, test=TestMessage(value="Test 123")))
+#
+#     def on_state_changed(self, state: ConnectionState):
+#         logging.info(f"on_state_changed() state={state}")
+#
+#     def on_connect(self, transport_getter):
+#         logging.info("on_connect():")
+#         self.messenger = Messenger(functools.partial(ProtocolMessenger, transport_getter), self)
+#         self.messenger.reconnect()
+#         # messenger.send(GenericMessage(requestId=10, sessionId=10, test=TestMessage(value="Test 123")))
 
-    def on_message_received(self, message: GenericMessage):
-        logging.info(f"on_message_received() message={message}")
+
+class Client(IListenerClient, ISessionClient):
+
+    def on_request(self, request: GenericMessage) -> Future[GenericMessage]:
+        logging.debug(f"on_request(): {request}")
+
+        future = Future()
+        future.set_result(GenericMessage(ok=EmptyProto()))
+
+        return future
 
     def on_state_changed(self, state: ConnectionState):
         logging.info(f"on_state_changed() state={state}")
 
     def on_connect(self, transport_getter):
         logging.info("on_connect():")
-        messenger = Messenger(functools.partial(ProtocolMessenger, transport_getter), self)
-        messenger.send(GenericMessage(requestId=10, sessionId=10, test=TestMessage(value="Test 123")))
+        session = Session(functools.partial(Messenger, functools.partial(ProtocolMessenger, transport_getter)), self)
+        session.request(GenericMessage(test=TestMessage(value="Test 123"))).add_done_callback(lambda res: logging.debug(f"response {res}"))
+        session.reconnect()
 
 
 def main():
