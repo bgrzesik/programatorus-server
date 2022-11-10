@@ -12,23 +12,6 @@ from server.comm.session.session import ISessionClient, Session
 
 from google.protobuf.empty_pb2 import Empty as EmptyProto
 
-
-# class Client(IListenerClient, IMessageClient):
-#
-#     def on_message_received(self, message: GenericMessage):
-#         logging.info(f"on_message_received() message={message}")
-#         self.messenger.send(GenericMessage(responseId=message.requestId, sessionId=message.sessionId, test=TestMessage(value="Test 123")))
-#
-#     def on_state_changed(self, state: ConnectionState):
-#         logging.info(f"on_state_changed() state={state}")
-#
-#     def on_connect(self, transport_getter):
-#         logging.info("on_connect():")
-#         self.messenger = Messenger(functools.partial(ProtocolMessenger, transport_getter), self)
-#         self.messenger.reconnect()
-#         # messenger.send(GenericMessage(requestId=10, sessionId=10, test=TestMessage(value="Test 123")))
-
-
 class Client(IListenerClient, ISessionClient):
 
     def on_request(self, request: GenericMessage) -> Future[GenericMessage]:

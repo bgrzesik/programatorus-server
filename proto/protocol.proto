@@ -1,0 +1,39 @@
+
+syntax = "proto3";
+
+package programus.proto;
+
+import "google/protobuf/empty.proto";
+
+
+// TODO(bgrzesik): delete me
+message TestMessage {
+  string value = 1;
+}
+
+message ErrorMessage {
+  string description = 1;
+}
+
+message SetSessionId {
+  uint64 sessionId = 1;
+}
+
+message GenericMessage {
+  uint64 sessionId = 1;
+
+  // Ordinal
+  oneof id {
+    uint64 request = 2;
+    uint64 response = 3;
+  }
+
+  oneof payload {
+    SetSessionId setSessionId = 100;
+    google.protobuf.Empty heartbeat = 101;
+
+    TestMessage test = 201;
+    ErrorMessage error = 202;
+    google.protobuf.Empty ok = 203;
+  }
+}
