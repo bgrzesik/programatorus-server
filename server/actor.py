@@ -7,40 +7,33 @@ from typing import Set
 CORRECT_THREAD_ATTR = "correct_thread"
 
 
-class Actor(object):
-    def __init__(self, parent: "Actor" = None, executor: ThreadPoolExecutor = None):
-        def init_actor_thread(self: Actor):
-            setattr(self._thread_local, CORRECT_THREAD_ATTR, True)
-            logging.debug(f"init_actor_thread(): Starting thread for {self.__class__.__name__} {self}")
+class Runner(object):
 
+    def __init__(self, name=None):
+        def init_thread():
+            nonlocal self
+            setattr(self._thread_local, CORRECT_THREAD_ATTR, True)
+            logging.debug(f"init_actor_thread(): Starting thread {self.name}")
+
+        self.name = name
         self._guards = set()
         self._timers: Set[threading.Timer] = set()
         self._cancel_timers = False
         self._thread_local = threading.local()
+        self._executor = ThreadPoolExecutor(1, thread_name_prefix=name, initializer=init_thread)
 
-        if parent is not None:
-            assert executor is None
-            executor = parent.executor
-
-        if executor is None:
-            self._executor = ThreadPoolExecutor(1,
-                                                thread_name_prefix=self.__class__.__name__,
-                                                initializer=init_actor_thread,
-                                                initargs=(self,))
-        else:
-            self._executor = executor
-            # Make sure that thread local variable is initialized
-            self._executor.submit(init_actor_thread, self).result()
-
-    def is_actor_thread(self):
+    def is_valid_thread(self):
         return getattr(self._thread_local, CORRECT_THREAD_ATTR, False)
 
     def run_on_executor(self, func, *args, timeout: float = None, force_schedule: bool = False, **kwargs):
         if timeout is not None and timeout > 0:
-            # We need to wrap future that is going to be create after specified time passes
+            # We need to wrap future that is going to be created after specified time passes
             future = Future()
 
-            def wrapper(self: Actor, timer: threading.Timer, future: Future, func, args, kwargs):
+            @functools.wraps(func)
+            def wrapper():
+                nonlocal self, timer, future, func, args, kwargs
+
                 self._timers.remove(timer)
                 if self._cancel_timers:
                     return
@@ -51,29 +44,27 @@ class Actor(object):
                     future.set_exception(exception)
                     return
 
-                def done_cb(future: Future, executor_future: Future):
-                    assert not executor_future.running()
+                def done_cb(fut: Future):
+                    nonlocal future, executor_future
+                    assert not fut.running() and fut == executor_future
 
                     future.set_result(executor_future.result())
-                    exception = executor_future.exception()
-                    if exception:
-                        future.set_exception(exception)
+                    exc = executor_future.exception()
+                    if exc:
+                        future.set_exception(exc)
 
-                executor_future.add_done_callback(functools.partial(done_cb, future))
+                executor_future.add_done_callback(done_cb)
 
-            args = [self, None, future, func, args, kwargs]
-            timer = threading.Timer(timeout, wrapper,
-                                    args=args)
-            args[1] = timer
-
+            timer = threading.Timer(timeout, wrapper)
             self._timers.add(timer)
             timer.daemon = True
             timer.start()
             return future
 
-        if not self.is_actor_thread() or timeout is not None or force_schedule:
+        if not self.is_valid_thread() or timeout is not None or force_schedule:
             return self._executor.submit(func, *args, *kwargs)
 
+        # Run on this thread
         future = Future()
         try:
             future.set_result(func(*args, *kwargs))
@@ -89,20 +80,16 @@ class Actor(object):
         self._guards.add(func)
 
         @functools.wraps(func)
-        def wrapper(self: Actor, func, args, kwargs):
+        def wrapper():
+            nonlocal self, func, args, kwargs
+
             self._guards.remove(func)
             func(*args, *kwargs)
 
-        return self.run_on_executor(wrapper,
-                                    self, func, args, kwargs,
-                                    timeout=timeout, force_schedule=force_schedule)
+        return self.run_on_executor(wrapper, timeout=timeout, force_schedule=force_schedule)
 
     def is_guarded_pending(self, func):
         return func in self._guards
-
-    @property
-    def executor(self) -> ThreadPoolExecutor:
-        return self._executor
 
     def __del__(self):
         self._cancel_timers = True
@@ -111,6 +98,28 @@ class Actor(object):
             timer.join()
 
         self._executor.shutdown()
+
+
+class Actor(object):
+    def __init__(self, runner: Runner = None, parent: "Actor" = None):
+        assert not (runner is not None and parent is not None)
+        if runner is not None:
+            self._runner = runner
+        elif parent is not None:
+            assert parent.runner is not None
+            self._runner = parent.runner
+        else:
+            self._runner = Runner(name=str(self))
+
+    def is_actor_thread(self):
+        return self._runner.is_valid_thread()
+
+    @property
+    def runner(self) -> Runner:
+        return self._runner
+
+    def is_guarded_pending(self, func):
+        return func in self._runner.is_guarded_pending(func)
 
     @staticmethod
     def handler(guarded=False, force_schedule=False):
@@ -123,17 +132,15 @@ class Actor(object):
                 force_schedule = force_schedule or force_schedule_parent
 
                 if guarded:
-                    return self.run_guarded(func,
-                                            *args,
-                                            timeout=timeout,
-                                            force_schedule=force_schedule,
-                                            **kwargs)
+                    return self._runner.run_guarded(func, *args,
+                                                    timeout=timeout,
+                                                    force_schedule=force_schedule,
+                                                    **kwargs)
                 else:
-                    return self.run_on_executor(func,
-                                                *args,
-                                                timeout=timeout,
-                                                force_schedule=force_schedule,
-                                                **kwargs)
+                    return self._runner.run_on_executor(func, *args,
+                                                        timeout=timeout,
+                                                        force_schedule=force_schedule,
+                                                        **kwargs)
 
             return wrapper
 
