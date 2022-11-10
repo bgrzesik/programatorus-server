@@ -68,8 +68,8 @@ class ProxyMessageClient(IMessageClient, Actor):
 
 class Messenger(IMessenger, Actor):
 
-    def __init__(self, messenger_provider, client, executor=None):
-        Actor.__init__(self, executor=executor)
+    def __init__(self, messenger_provider, client):
+        Actor.__init__(self)
         client = Messenger.Client(self, client)
         self._impl: IMessenger = messenger_provider(client)
 
@@ -77,14 +77,14 @@ class Messenger(IMessenger, Actor):
     def state(self):
         return self._impl.state
 
+    @Actor.handler()
+    def _send(self, outgoing: "Messenger.OutgoingMessage"):
+        impl = self._impl.send(outgoing.message)
+        outgoing.set_outgoing_message(impl)
+
     def send(self, message: GenericMessage) -> IOutgoingMessage:
         outgoing = Messenger.OutgoingMessage(self, message)
-
-        def impl_send(self: Messenger, outgoing: Messenger.OutgoingMessage):
-            impl = self._impl.send(outgoing.message)
-            outgoing.set_outgoing_message(impl)
-
-        self.run_on_executor(impl_send, self, outgoing)
+        self._send(outgoing)
         return outgoing
 
     @Actor.handler(guarded=True)

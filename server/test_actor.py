@@ -116,32 +116,39 @@ class ActorTests(unittest.TestCase):
 
         @Actor.handler()
         def busy_task(self):
+            logging.debug("busy_task():")
             self.event.wait()
             self.event.clear()
 
         @Actor.handler(guarded=False)
         def not_guarded(self, value):
+            logging.debug(f"not_guarded(): value={value}")
             self.queue.put(value)
 
         @Actor.handler(guarded=True)
         def guarded(self, value):
+            logging.debug(f"guarded(): value={value}")
             self.queue.put(value)
 
         @Actor.assert_executor()
         def asserted(self, value):
+            logging.debug(f"asserted(): value={value}")
             self.queue.put(value)
 
         @Actor.handler()
         def use_asserted(self, value):
+            logging.debug(f"use_asserted(): value={value}")
             self.asserted(value)
 
         @Actor.handler(guarded=False)
         def use_other_not_guarded(self, actor_tests: "ActorTests", amount, value):
+            logging.debug(f"use_other_not_guarded(): value={value}")
             for _ in range(amount):
                 actor_tests.assertTrue(self.not_guarded(value).done())
 
         @Actor.handler(guarded=True)
         def use_other_guarded(self, actor_tests: "ActorTests", amount, value):
+            logging.debug(f"use_other_guarded(): value={value}")
             for _ in range(amount):
                 actor_tests.assertTrue(self.guarded(value).done())
 

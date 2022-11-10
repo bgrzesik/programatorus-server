@@ -30,8 +30,8 @@ class Session(ISession, Actor):
     HEARTBEAT_S = 0.5
     TIMEOUT_S = 32 * HEARTBEAT_S
 
-    def __init__(self, messenger_provider, client, executor=None):
-        Actor.__init__(self, executor=executor)
+    def __init__(self, messenger_provider, client, runner=None):
+        Actor.__init__(self, runner=runner)
         self.session_id: Optional[int] = None
         self._posted_heartbeat: Optional[Future[GenericMessage]] = None
         self._last_transfer = time.monotonic()
@@ -41,7 +41,6 @@ class Session(ISession, Actor):
 
         client = Session.Client(self, client)
         self._messenger: IMessenger = messenger_provider(client)
-        super().__init__()
 
     @property
     def state(self) -> ConnectionState:
@@ -73,10 +72,9 @@ class Session(ISession, Actor):
 
     @Actor.assert_executor()
     def process_control_requests(self, message: GenericMessage) -> Optional[GenericMessage]:
-        logging.debug(f"_process_control_requests(): ${message.WhichOneof('payload')}")
+        logging.debug(f"_process_control_requests(): {message.WhichOneof('payload')}")
 
         if message.WhichOneof("payload") == "heartbeat":
-            logging.debug(f"_process_control_requests(): Heartbeat")
             return GenericMessage(ok=EmptyProto())
         elif message.WhichOneof("payload") == "setSessionId":
             self.session_id = message.setSessionId.sessionId
