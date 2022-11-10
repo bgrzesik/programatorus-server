@@ -49,10 +49,9 @@ class Session(ISession, Actor):
     def request(self, request: GenericMessage) -> Future[GenericMessage]:
         logging.debug("request():")
 
-        header = GenericMessage()
+        header = GenericMessage(request=next(self._next_request_id))
         if self.session_id is not None:
             header.sessionId = self.session_id
-        header.requestId = next(self._next_request_id)
 
         request.MergeFrom(header)
 
@@ -126,21 +125,20 @@ class Session(ISession, Actor):
     def on_request_done(self, request_id: int, response: Future[GenericMessage]):
         logging.debug(f"on_request_done(): request_id={request_id}")
 
-        message = None
         exception = response.exception()
         if exception is not None:
             message = GenericMessage()
             if self.session_id is not None:
                 message.sessionId = self.session_id
-            message.responseId = request_id
+            message.response = request_id
             message.error = ErrorMessage(description=str(exception))
         else:
             message = GenericMessage()
             message.CopyFrom(response.result())
             if self.session_id is not None:
                 message.sessionId = self.session_id
-            message.responseId = request_id
-            message.ClearField("requestId")
+            message.response = request_id
+            message.ClearField("request")
 
         logging.debug(f"on_request_done(): request_id={request_id} response={message.WhichOneof('payload')}")
         self._queue.append(Session.PendingMessage(self, False, message))
@@ -157,9 +155,9 @@ class Session(ISession, Actor):
         @property
         def id(self) -> int:
             if self.is_request:
-                return self.message.requestId
+                return self.message.request
             else:
-                return self.message.responseId
+                return self.message.response
 
         def set_outgoing_message(self, outgoing):
             self._session.assert_executor()
@@ -177,55 +175,69 @@ class Session(ISession, Actor):
     class Client(IMessageClient, Actor):
 
         def __init__(self, session, client):
-            super().__init__(parent=session)
+            Actor.__init__(self, parent=session)
             self._session: Session = session
             self._client: ISessionClient = client
 
-        @Actor.handler()
+        @Actor.assert_executor()
         def _on_response(self, response: GenericMessage):
-            logging.debug(f"_on_response(): id={response.responseId}")
+            assert self._session.is_actor_thread()
+            logging.debug(f"_on_response(): id={response.response}")
 
-            pending = self._session.waiting_for_response.pop(response.responseId)
+            pending = self._session.waiting_for_response.pop(response.response)
             if pending is None:
                 logging.warning(
-                    f"_on_response(): Received a response for non existing request id={response.responseId}")
+                        f"_on_response(): Received a response for non existing request id={response.response}")
                 return
 
-            logging.debug(f"_on_response(): Completing request id={response.responseId}")
+            logging.debug(f"_on_response(): Completing request id={response.response}")
             pending.future.set_result(response)
 
-        @Actor.handler()
+        @Actor.assert_executor()
         def _on_request(self, request: GenericMessage):
-            logging.debug(f"_on_request(): Received request id={request.requestId}")
+            assert self._session.is_actor_thread()
+            logging.debug(f"_on_request(): Received request id={request.request}")
 
             response = self._session.process_control_requests(request)
             if response is not None:
-                logging.debug(f"_on_request(): Received request id={request.requestId}")
+                logging.debug(f"_on_request(): Received request id={request.request}")
                 future = Future()
                 future.set_result(response)
-                self._session.on_request_done(request.requestId, future)
+                self._session.on_request_done(request.request, future)
                 return
 
             logging.debug(f"_on_request(): Deferring request to client")
 
             future = self._client.on_request(request)
-            future.add_done_callback(functools.partial(self._session.on_request_done, request.requestId))
+            future.add_done_callback(functools.partial(self._session.on_request_done, request.request))
 
         @Actor.handler()
         def on_message_received(self, message: GenericMessage):
             logging.debug(f"on_message_received(): message={message.WhichOneof('payload')}")
 
-            if self._session.session_id is not None and message.sessionId != self._session.session_id:
-                logging.warning("on_message_received(): Received a message invalid session id")
-                return
+            logging.debug(f"on_message_received(): session={self._session} message={message}")
+            try:
+                if self._session.session_id is not None and message.sessionId != self._session.session_id:
+                    logging.warning("on_message_received(): Received a message invalid session id")
+                    return
+            except Exception as err:
+                logging.error("on_message_received():", exc_info=err)
 
             self._session.update_last_transfer()
-            if message.HasField("requestId") and not message.HasField("responseId"):
-                self._on_request(message)
-            elif message.HasField("responseId") and not message.HasField("requestId"):
-                self._on_request(message)
-            else:
-                logging.warning("on_message_received(): Received a message that is not a request nor a response")
+            try:
+                logging.debug(f"on_message_received(): {self._session.runner.name} {self.runner.name}")
+                assert self._session.is_actor_thread()
+                if message.WhichOneof("id") == "request":
+                    logging.warning("on_message_received(): Received a request")
+                    self._on_request(message)
+                elif message.WhichOneof("id") == "response":
+                    logging.warning("on_message_received(): Received a response")
+                    self._on_response(message)
+                else:
+                    logging.warning("on_message_received(): Received a message that is not a request nor a response")
+
+            except Exception as exc:
+                logging.error("on_message_received(): ", exc_info=exc)
 
         @Actor.handler()
         def on_state_changed(self, state: ConnectionState):

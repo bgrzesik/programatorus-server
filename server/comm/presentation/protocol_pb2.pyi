@@ -12,24 +12,24 @@ class ErrorMessage(_message.Message):
     def __init__(self, description: _Optional[str] = ...) -> None: ...
 
 class GenericMessage(_message.Message):
-    __slots__ = ["error", "heartbeat", "ok", "requestId", "responseId", "sessionId", "setSessionId", "test"]
+    __slots__ = ["error", "heartbeat", "ok", "request", "response", "sessionId", "setSessionId", "test"]
     ERROR_FIELD_NUMBER: _ClassVar[int]
     HEARTBEAT_FIELD_NUMBER: _ClassVar[int]
     OK_FIELD_NUMBER: _ClassVar[int]
-    REQUESTID_FIELD_NUMBER: _ClassVar[int]
-    RESPONSEID_FIELD_NUMBER: _ClassVar[int]
+    REQUEST_FIELD_NUMBER: _ClassVar[int]
+    RESPONSE_FIELD_NUMBER: _ClassVar[int]
     SESSIONID_FIELD_NUMBER: _ClassVar[int]
     SETSESSIONID_FIELD_NUMBER: _ClassVar[int]
     TEST_FIELD_NUMBER: _ClassVar[int]
     error: ErrorMessage
     heartbeat: _empty_pb2.Empty
     ok: _empty_pb2.Empty
-    requestId: int
-    responseId: int
+    request: int
+    response: int
     sessionId: int
     setSessionId: SetSessionId
     test: TestMessage
-    def __init__(self, sessionId: _Optional[int] = ..., requestId: _Optional[int] = ..., responseId: _Optional[int] = ..., setSessionId: _Optional[_Union[SetSessionId, _Mapping]] = ..., heartbeat: _Optional[_Union[_empty_pb2.Empty, _Mapping]] = ..., test: _Optional[_Union[TestMessage, _Mapping]] = ..., error: _Optional[_Union[ErrorMessage, _Mapping]] = ..., ok: _Optional[_Union[_empty_pb2.Empty, _Mapping]] = ...) -> None: ...
+    def __init__(self, sessionId: _Optional[int] = ..., request: _Optional[int] = ..., response: _Optional[int] = ..., setSessionId: _Optional[_Union[SetSessionId, _Mapping]] = ..., heartbeat: _Optional[_Union[_empty_pb2.Empty, _Mapping]] = ..., test: _Optional[_Union[TestMessage, _Mapping]] = ..., error: _Optional[_Union[ErrorMessage, _Mapping]] = ..., ok: _Optional[_Union[_empty_pb2.Empty, _Mapping]] = ...) -> None: ...
 
 class SetSessionId(_message.Message):
     __slots__ = ["sessionId"]

@@ -37,7 +37,7 @@ class MessageLoopbackTest(unittest.TestCase):
         messages = []
 
         for i in range(10):
-            message = GenericMessage(sessionId=i, requestId=i, test=TestMessage(value=f"Test message {i}"))
+            message = GenericMessage(sessionId=i, request=i, test=TestMessage(value=f"Test message {i}"))
             logging.info(f"test: Sending {message}")
             messages.append(transport.send(message))
 

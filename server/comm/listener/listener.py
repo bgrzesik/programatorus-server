@@ -65,10 +65,10 @@ class SocketListener(IListener, Actor, ABC):
                     self._client.on_connect(functools.partial(self._construct, client, addr))
 
                 except IOError as error:
-                    logging.error("listen(): IO Error ", error)
+                    logging.error("listen(): IO Error ", exc_info=error)
 
             logging.info("listen(): Server closing")
             self._server.close()
 
         except Exception as exception:
-            logging.error(exception)
+            logging.error("listen(): ", exc_info=exception)
