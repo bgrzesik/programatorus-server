@@ -92,6 +92,7 @@ class Runner(object):
         return func in self._guards
 
     def __del__(self):
+        logging.debug("__del__():")
         self._cancel_timers = True
         for timer in self._timers:
             timer.cancel()
@@ -119,7 +120,7 @@ class Actor(object):
         return self._runner
 
     def is_guarded_pending(self, func):
-        return func in self._runner.is_guarded_pending(func)
+        return self._runner.is_guarded_pending(func)
 
     @staticmethod
     def handler(guarded=False, force_schedule=False):

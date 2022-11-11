@@ -8,9 +8,9 @@ from typing import Optional, List, Dict
 
 from google.protobuf.empty_pb2 import Empty as EmptyProto
 
-from server.actor import Actor
-from server.comm.connection import IConnection, IConnectionClient, ConnectionState
-from server.comm.presentation.messenger import IMessenger, IMessageClient, IOutgoingMessage
+from server.actor import Actor, Runner
+from server.comm.connection import IConnection, IConnectionClient, ConnectionState, IConnectionBuilder
+from server.comm.presentation.messenger import IMessenger, IMessageClient, IOutgoingMessage, IMessengerBuilder
 from server.comm.presentation.protocol_pb2 import GenericMessage, ErrorMessage
 
 
@@ -26,11 +26,20 @@ class ISessionClient(IConnectionClient, ABC):
         raise NotImplementedError
 
 
+class ISessionBuilder(IConnectionBuilder, ABC):
+
+    def construct(self, client: ISessionClient, runner: Runner = None):
+        raise NotImplementedError
+
+    def build(self, client: ISessionClient, runner: Runner = None):
+        return self.construct(client, runner or self.runner)
+
+
 class Session(ISession, Actor):
     HEARTBEAT_S = 0.5
     TIMEOUT_S = 32 * HEARTBEAT_S
 
-    def __init__(self, messenger_provider, client, runner=None):
+    def __init__(self, messenger_builder: IMessengerBuilder, client, runner=None):
         Actor.__init__(self, runner=runner)
         self.session_id: Optional[int] = None
         self._posted_heartbeat: Optional[Future[GenericMessage]] = None
@@ -40,7 +49,7 @@ class Session(ISession, Actor):
         self._queue: List[Session.PendingMessage] = []
 
         client = Session.Client(self, client)
-        self._messenger: IMessenger = messenger_provider(client)
+        self._messenger: IMessenger = messenger_builder.build(client, runner=runner)
 
     @property
     def state(self) -> ConnectionState:
@@ -249,3 +258,15 @@ class Session(ISession, Actor):
         @Actor.handler()
         def on_error(self):
             self._client.on_error()
+
+    class Builder(ISessionBuilder):
+
+        def __init__(self, messenger=None, runner=None):
+            super().__init__(runner=runner)
+            self._messenger: IMessengerBuilder = messenger
+
+        def set_messenger(self, messenger: IMessengerBuilder):
+            self._messenger = messenger
+
+        def construct(self, client: ISessionClient, runner: Runner = None):
+            return Session(self._messenger, client, runner)
