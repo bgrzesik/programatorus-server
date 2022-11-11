@@ -11,7 +11,7 @@ from server.comm.transport.transport import *
 class MessageLoopbackTest(unittest.TestCase):
 
     @staticmethod
-    def setUpClass() -> None:
+    def setUpClass(**kwargs) -> None:
         import sys
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
@@ -33,13 +33,13 @@ class MessageLoopbackTest(unittest.TestCase):
                 test_self.fail("on_error():")
 
         client = Client()
-        transport = ProtocolMessenger(lambda client: Transport(LoopbackTransport, client), client)
+        messenger = ProtocolMessenger.Builder(transport=Transport.Builder(transport=LoopbackTransport.Builder())).build(client)
         messages = []
 
         for i in range(10):
             message = GenericMessage(sessionId=i, request=i, test=TestMessage(value=f"Test message {i}"))
             logging.info(f"test: Sending {message}")
-            messages.append(transport.send(message))
+            messages.append(messenger.send(message))
 
         for message in messages:
             received: bytes = queue.get()  # timeout=5.0)

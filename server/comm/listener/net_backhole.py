@@ -1,5 +1,5 @@
-import functools
 import logging
+import threading
 from concurrent.futures import Future
 
 from google.protobuf.empty_pb2 import Empty as EmptyProto
@@ -11,6 +11,7 @@ from server.comm.presentation.messenger import Messenger
 from server.comm.presentation.protocol_messenger import ProtocolMessenger
 from server.comm.presentation.protocol_pb2 import GenericMessage, TestMessage
 from server.comm.session.session import ISessionClient, Session
+from server.comm.transport.transport import ITransportBuilder
 
 
 class Client(IListenerClient, ISessionClient):
@@ -26,18 +27,30 @@ class Client(IListenerClient, ISessionClient):
     def on_state_changed(self, state: ConnectionState):
         logging.info(f"on_state_changed() state={state}")
 
-    def on_connect(self, transport_getter):
+    def on_connect(self, transport_builder: ITransportBuilder):
         logging.info("on_connect():")
-        session = Session(functools.partial(Messenger, functools.partial(ProtocolMessenger, transport_getter)), self)
-        session.request(GenericMessage(test=TestMessage(value="Test 123"))).add_done_callback(lambda res: logging.debug(f"response {res}"))
+
+        session = Session.Builder(
+                messenger=Messenger.Builder(
+                        messenger=ProtocolMessenger.Builder(
+                                transport=transport_builder
+                        )
+                )
+        ).construct(self)
+
+        session.request(GenericMessage(test=TestMessage(value="Test 123"))).add_done_callback(
+            lambda res: logging.debug(f"response {res}"))
         session.reconnect()
 
 
 def main():
+    event = threading.Event()
     client = Client()
 
     bt_listener = NetworkListener(client)
     bt_listener.listen()
+
+    event.wait()
 
 
 if __name__ == "__main__":

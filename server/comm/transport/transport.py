@@ -8,8 +8,10 @@ from abc import ABC
 from concurrent.futures import Future
 from typing import List, Optional
 
-from server.actor import Actor
-from server.comm.connection import IConnection, IConnectionClient, AbstractConnection, ConnectionState
+from server.actor import Actor, Runner
+from server.comm.connection import IConnection, IConnectionClient, AbstractConnection, ConnectionState, \
+    IConnectionBuilder
+from server.comm.transport.frame_coding import FrameDecoder, FrameEncoder
 
 RECONNECT_TIMEOUT = 2.0  # seconds
 MAX_ERROR_COUNT = 4
@@ -49,8 +51,8 @@ class ITransportClient(IConnectionClient, ABC):
 
 class ProxyTransportClient(ITransportClient, Actor):
 
-    def __init__(self, impl, parent=None, executor=None):
-        super().__init__(parent=parent, executor=executor)
+    def __init__(self, impl, parent=None, runner=None):
+        super().__init__(parent=parent, runner=runner)
         self.impl: ITransportClient = impl
 
     @Actor.handler()
@@ -72,14 +74,23 @@ class ITransport(IConnection, ABC):
         raise NotImplementedError
 
 
+class ITransportBuilder(IConnectionBuilder, ABC):
+
+    def construct(self, client: ITransportClient, runner: Runner = None):
+        raise NotImplementedError
+
+    def build(self, client: ITransportClient, runner: Runner = None):
+        return self.construct(client, runner or self.runner)
+
+
 class Transport(ITransport, AbstractConnection, Actor):
 
-    def __init__(self, impl_provider, client):
-        Actor.__init__(self)
+    def __init__(self, transport_builder: ITransportBuilder, client, runner=None):
+        Actor.__init__(self, runner=runner)
         client = Transport.Client(self, client)
         AbstractConnection.__init__(self, client)
         self._client = client
-        self._impl: ITransport = impl_provider(self._client)
+        self._impl: ITransport = transport_builder.build(self._client, runner=runner)
         self._been_connected = False
         self.pending_packets: List[Transport.OutgoingPacket] = []
         self.error_count = 0
@@ -118,6 +129,7 @@ class Transport(ITransport, AbstractConnection, Actor):
         logging.debug("disconnect():")
         if self.state != ConnectionState.CONNECTED:
             logging.debug("disconnect(): Transport not connected")
+            del self.runner
             return
 
         self._impl.disconnect()
@@ -237,6 +249,17 @@ class Transport(ITransport, AbstractConnection, Actor):
             # TODO(bgrzesik): consider adding if error > MAX_ERROR_COUNT
             self.client.on_error()
 
+    class Builder(ITransportBuilder):
+        def __init__(self, transport=None, runner=None):
+            super().__init__(runner=runner)
+            self._transport: ITransportBuilder = transport
+
+        def set_transport(self, transport):
+            self._transport = transport
+
+        def construct(self, client: ITransportClient, runner: Runner = None):
+            return Transport(self._transport, client, runner)
+
 
 class StreamingTransport(ITransport, AbstractConnection, ABC):
     MAX_SIZE = 1024
@@ -249,10 +272,6 @@ class StreamingTransport(ITransport, AbstractConnection, ABC):
         self._running = False
         self._output_queue: List[StreamingTransport.OutgoingPacket] = []
         self._running = False
-
-        self._output_buffer: Optional[bytes] = None
-        self._input_buffer: Optional[bytes] = None
-        self._packet_size = 0
 
         if self.is_connected:
             # Ensure that state is history is correct
@@ -277,50 +296,41 @@ class StreamingTransport(ITransport, AbstractConnection, ABC):
         raise NotImplementedError
 
     def _read(self):
+        def wrapped_input():
+            nonlocal self
+            read = self.input(1)
+            return read[0]
+
         logging.debug("_read()")
-        if self._input_buffer is None:
-            self._packet_size = int.from_bytes(self.input(4), "big")
-            self._input_buffer = bytes()
-            logging.debug(f"_read(): going to read {self._packet_size}")
-            return
+        decoder = FrameDecoder(wrapped_input)
+        frame = decoder.read_frame()
+        if frame is not None:
+            logging.debug(f"_read(): Decoded frame size={len(frame)}")
+            self._client.on_packet_received(bytes(frame))
+        else:
+            logging.debug(f"_read(): Failed to decode")
 
-        remaining = self._packet_size - len(self._input_buffer)
-        logging.debug(f"_read(): size = {self._packet_size} remaining = {remaining}")
-
-        read_bytes = self.input(remaining)
-        if read_bytes:
-            self._input_buffer = self._input_buffer + read_bytes
-            logging.debug(f"_read(): read={len(read_bytes)}")
-
-        assert len(self._input_buffer) <= self._packet_size
-        if self._packet_size == len(self._input_buffer):
-            self._client.on_packet_received(self._input_buffer)
-            self._input_buffer = None
 
     def _write(self):
+        def wrapped_output(arr):
+            self.output(bytes(arr))
+
         logging.debug("_write():")
-        if self._output_buffer is None:
-            if not self._output_queue:
-                return False
+        encoder = FrameEncoder(wrapped_output)
+        encoder.start_frame()
+        for byte in self._output_queue[0].packet:
+            encoder.write_byte(byte)
+        encoder.finish_frame()
 
-            packet = self._output_queue[0]
-            size = int.to_bytes(len(packet.packet), 4, "big")
+        packet = self._output_queue.pop(0)
+        packet.future.set_result(packet)
 
-            self._output_buffer = size + packet.packet
-
-        num = self.output(self._output_buffer)
-        logging.debug(f"_write(): wrote = {num}")
-        self._output_buffer = self._output_buffer[num:]
-
-        if len(self._output_buffer) == 0:
-            packet = self._output_queue.pop(0)
-            packet.future.set_result(packet)
-            self._output_buffer = None
+        logging.debug("_write(): Wrote packet")
 
     def _io_thread(self):
         logging.debug(f"_io_thread(): thread={threading.current_thread()} self={self}")
         while self._running:
-            poll_write = (self._output_buffer is not None) or (len(self._output_queue) != 0)
+            poll_write = len(self._output_queue) != 0
             logging.debug(f"_io_thread(): poll_write = {poll_write}")
             read, write, hup = self.wait(poll_write)
             logging.debug(f"_io_thread(): read = {read}, write = {write}, hup={hup}, running = {self._running}")
@@ -339,7 +349,8 @@ class StreamingTransport(ITransport, AbstractConnection, ABC):
             except BlockingIOError:
                 # Ignore this, we don't want any blocking
                 pass
-            except Exception:
+            except Exception as exc:
+                logging.error("_io_thread(): ", exc_info=exc)
                 self._client.on_error()
 
         logging.debug(f"_io_thread(): Exited")
@@ -435,12 +446,6 @@ class SocketTransport(StreamingTransport):
 
         self._event, self._notify = os.pipe()
         os.set_blocking(self._event, False)
-
-        if hasattr(self._sock, "setblocking"):
-            self._sock.setblocking(False)
-        else:
-            os.set_blocking(self._sock.fileno(), False)
-
         self._poll = select.poll()
         self._poll.register(self._event, select.POLLIN)
         self._poll.register(self._sock, select.POLLIN)
@@ -517,6 +522,26 @@ class SocketTransport(StreamingTransport):
 
     def __del__(self):
         super().__del__()
-        os.close(self._notify)
-        os.close(self._event)
+        if self._notify is not None:
+            os.close(self._notify)
+        if self._event is not None:
+            os.close(self._event)
         self._sock.close()
+
+    class Builder(ITransportBuilder):
+
+        def __init__(self, socket=None, addr=None, runner=None):
+            super().__init__(runner=runner)
+            self._socket = socket
+            self._addr = addr
+
+        def set_socket(self, socket):
+            self._socket = socket
+            return self
+
+        def set_addr(self, addr):
+            self._addr = addr
+            return self
+
+        def construct(self, client: ITransportClient, runner: Runner = None):
+            return SocketTransport(self._socket, self._addr, client)

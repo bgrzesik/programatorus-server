@@ -87,11 +87,15 @@ class LoopbackTransport(MockTransport):
         def on_packet(self, packet: bytes) -> Optional[bytes]:
             return packet
 
+    class Builder(ITransportBuilder):
+        def construct(self, client: ITransportClient, runner: Runner = None):
+            return LoopbackTransport(client)
+
 
 class PacketLoopbackTest(unittest.TestCase):
 
     @staticmethod
-    def setUpClass() -> None:
+    def setUpClass(**kwargs) -> None:
         import sys
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG,
                             format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s')
@@ -114,7 +118,7 @@ class PacketLoopbackTest(unittest.TestCase):
                 test_self.fail("on_error():")
 
         client = Client()
-        transport = Transport(LoopbackTransport, client)
+        transport = Transport.Builder(LoopbackTransport.Builder()).build(client)
         transport.reconnect()
 
         packets = []
@@ -145,7 +149,7 @@ class PacketLoopbackTest(unittest.TestCase):
 class SocketPairTransportTest(unittest.TestCase):
 
     @staticmethod
-    def setUpClass() -> None:
+    def setUpClass(**kwargs) -> None:
         import sys
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG,
                             format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s')
@@ -153,8 +157,12 @@ class SocketPairTransportTest(unittest.TestCase):
     @staticmethod
     def pair_transport(client_a: ITransportClient, client_b: ITransportClient):
         sock_a, sock_b = socket.socketpair()
-        transport_a = Transport(functools.partial(SocketTransport, sock_a, None), client_a)
-        transport_b = Transport(functools.partial(SocketTransport, sock_b, None), client_b)
+
+        transport_a = Transport.Builder(
+                transport=SocketTransport.Builder(socket=sock_a, addr=None)).build(client_a)
+        transport_b = Transport.Builder(
+                transport=SocketTransport.Builder(socket=sock_b, addr=None)).build(client_b)
+
         return transport_a, transport_b
 
     def test_both_ways(self):

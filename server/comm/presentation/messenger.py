@@ -4,8 +4,8 @@ from abc import ABC
 from concurrent.futures import Future
 from typing import Optional
 
-from server.actor import Actor
-from server.comm.connection import IConnection, IConnectionClient, ConnectionState
+from server.actor import Actor, Runner
+from server.comm.connection import IConnection, IConnectionClient, ConnectionState, IConnectionBuilder
 from server.comm.presentation.protocol_pb2 import GenericMessage
 
 
@@ -47,6 +47,15 @@ class IMessageClient(IConnectionClient, ABC):
         raise NotImplementedError
 
 
+class IMessengerBuilder(IConnectionBuilder, ABC):
+
+    def construct(self, client: IMessageClient, runner: Runner = None):
+        raise NotImplementedError
+
+    def build(self, client: IMessageClient, runner: Runner = None):
+        return self.construct(client, runner or self.runner)
+
+
 class ProxyMessageClient(IMessageClient, Actor):
 
     def __init__(self, impl, parent=None, executor=None):
@@ -68,10 +77,10 @@ class ProxyMessageClient(IMessageClient, Actor):
 
 class Messenger(IMessenger, Actor):
 
-    def __init__(self, messenger_provider, client):
-        Actor.__init__(self)
+    def __init__(self, messenger_builder: IMessengerBuilder, client, runner=None):
+        Actor.__init__(self, runner=runner)
         client = Messenger.Client(self, client)
-        self._impl: IMessenger = messenger_provider(client)
+        self._impl: IMessenger = messenger_builder.build(client, runner)
 
     @property
     def state(self):
@@ -148,3 +157,15 @@ class Messenger(IMessenger, Actor):
         @Actor.handler()
         def on_error(self):
             self.client.on_error()
+
+    class Builder(IMessengerBuilder):
+
+        def __init__(self, messenger=None, runner=None):
+            super().__init__(runner=runner)
+            self._messenger: IMessengerBuilder = messenger
+
+        def set_messenger(self, messenger):
+            self._messenger = messenger
+
+        def construct(self, client: IMessageClient, runner: Runner = None):
+            return Messenger(self._messenger, client, runner=runner)
