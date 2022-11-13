@@ -1,7 +1,7 @@
 import logging
 import threading
 import unittest
-from abc import ABC
+from abc import ABC, abstractmethod
 from concurrent.futures import Future
 from queue import Queue, Empty
 from threading import Timer
@@ -19,6 +19,7 @@ from server.comm.transport.transport import Transport
 
 
 class IMockTransportEndpoint(ABC):
+    @abstractmethod
     def on_packet(self, packet: bytes) -> Optional[bytes]:
         raise NotImplementedError
 

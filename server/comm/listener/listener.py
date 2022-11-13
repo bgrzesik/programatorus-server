@@ -1,6 +1,6 @@
 import logging
 import socket
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Optional
 
 from server.actor import Actor
@@ -12,11 +12,13 @@ from server.comm.transport.transport import (
 
 
 class IListener(ABC):
+    @abstractmethod
     def listen(self):
         raise NotImplementedError
 
 
 class IListenerClient(ABC):
+    @abstractmethod
     def on_connect(self, transport_builder: ITransportBuilder):
         raise NotImplementedError
 
@@ -39,6 +41,7 @@ class SocketListener(IListener, Actor, ABC):
         self._listening = True
         self._wrap_transport = wrap_transport
 
+    @abstractmethod
     def create_socket(self) -> socket.socket:
         raise NotImplementedError
 

@@ -2,7 +2,7 @@ import socket
 import logging
 import unittest
 import threading
-from abc import ABC
+from abc import ABC, abstractmethod
 from queue import Empty, Queue
 from typing import Optional, List
 from concurrent.futures import Future
@@ -22,6 +22,7 @@ from server.comm.transport.transport import (
 
 
 class IMockTransportEndpoint(ABC):
+    @abstractmethod
     def on_packet(self, packet: bytes) -> Optional[bytes]:
         raise NotImplementedError
 

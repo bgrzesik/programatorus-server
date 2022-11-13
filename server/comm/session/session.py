@@ -2,7 +2,7 @@ import functools
 import itertools
 import logging
 import time
-from abc import ABC
+from abc import ABC, abstractmethod
 from concurrent.futures import Future
 from typing import Optional, List, Dict
 
@@ -25,16 +25,19 @@ from server.comm.presentation.protocol_pb2 import GenericMessage, ErrorMessage
 
 
 class ISession(IConnection, ABC):
+    @abstractmethod
     def request(self, request: GenericMessage) -> Future[GenericMessage]:
         raise NotImplementedError
 
 
 class ISessionClient(IConnectionClient, ABC):
+    @abstractmethod
     def on_request(self, request: GenericMessage) -> Future[GenericMessage]:
         raise NotImplementedError
 
 
 class ISessionBuilder(IConnectionBuilder, ABC):
+    @abstractmethod
     def construct(self, client: ISessionClient,
                   runner: Optional[Runner] = None):
         raise NotImplementedError
