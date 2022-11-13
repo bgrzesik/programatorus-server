@@ -1,11 +1,20 @@
+import logging
 import socket
+from concurrent.futures import Future
 from datetime import datetime
 
 import Adafruit_SSD1306
 from PIL import ImageDraw
 from gpiozero import Button
 
-from server.comm.transport.bt import BTServer
+from google.protobuf.empty_pb2 import Empty as EmptyProto
+
+from server.comm.listener.listener import IListenerClient
+from server.comm.listener.bt import BluetoothListener
+from server.comm.presentation.protocol_messenger import ProtocolMessenger
+from server.comm.presentation.protocol_pb2 import GenericMessage
+from server.comm.presentation.messenger import Messenger
+from server.comm.session.session import Session, ISessionClient
 from server.target.demo_store import get_files
 from server.ui.menu import *
 from server.ui.pair import PairDialog
@@ -59,15 +68,48 @@ class ProgramFlashMenuItem(MenuItem):
         MenuItem.__init__(self, file_name)
 
     def on_click(self, select=True):
-        self.proxy.start_async("flash", {'board': 'rp2040.cfg', 'target': self.file_name})
+        self.proxy.start_async(
+            "flash", {'board': 'rp2040.cfg', 'target': self.file_name})
 
+
+class SessionClient(ISessionClient):
+
+    def on_request(self, request):
+        logging.info(f"on_request(): {request}")
+        future = Future()
+        future.set_result(GenericMessage(ok=EmptyProto()))
+        return future
+
+    def on_state_changed(self, state):
+        logging.info(f"on_state_changed(): {state}")
+
+
+class ListenerClient(IListenerClient):
+
+    def __init__(self):
+        self._sessions = []
+
+    def on_connect(self, transport_builder):
+        logging.info(f"on_connect():")
+        session = Session.Builder(
+            messenger=Messenger.Builder(
+                messenger=ProtocolMessenger.Builder(
+                    transport=transport_builder)))\
+            .build(SessionClient())
+
+        session.reconnect()
+
+        self._sessions.append(session)
 
 def main():
     fs = FlashService()
     request_handler = RequestHandler.serve(fs)
     proxy = Proxy.serve(request_handler)
-    server = BTServer(proxy)
-    server.start()
+
+    listener = BluetoothListener(ListenerClient())
+    listener.listen()
+    # server = BTServer(proxy)
+    # server.start()
 
     disp = Adafruit_SSD1306.SSD1306_128_32(rst=24)
     btn_select = Button(26, pull_up=True)
@@ -108,4 +150,8 @@ def main():
 
 
 if __name__ == '__main__':
+    import sys
+    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG,
+                        format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s')
+
     main()
