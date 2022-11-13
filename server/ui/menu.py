@@ -18,7 +18,7 @@ class Menu(object):
         self.back = False
 
     def on_select_btn(self):
-        self.items[self.selected].on_click()
+        self.items[self.selected].on_click(True)
 
     def on_back_btn(self):
         self.items[self.selected].on_click(False)
@@ -66,7 +66,7 @@ class MenuItem(object):
     def visible_text(self):
         return self.text
 
-    def on_click(self, select=True):
+    def on_click(self, select):
         pass
 
     def draw(self, draw, x, y):

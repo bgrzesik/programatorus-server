@@ -127,8 +127,6 @@ def main():
 
     listener = BluetoothListener(ListenerClient())
     listener.listen()
-    # server = BTServer(proxy)
-    # server.start()
 
     disp = Adafruit_SSD1306.SSD1306_128_32(rst=24)
     btn_select = Button(26, pull_up=True)
