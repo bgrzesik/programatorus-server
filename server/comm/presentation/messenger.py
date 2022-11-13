@@ -1,6 +1,6 @@
 import functools
 import logging
-from abc import ABC
+from abc import ABC, abstractmethod
 from concurrent.futures import Future
 from typing import Optional
 
@@ -16,10 +16,12 @@ from server.comm.presentation.protocol_pb2 import GenericMessage
 
 class IOutgoingMessage(ABC):
     @property
+    @abstractmethod
     def message(self) -> GenericMessage:
         raise NotImplementedError
 
     @property
+    @abstractmethod
     def future(self) -> Future:
         raise NotImplementedError
 
@@ -39,16 +41,19 @@ class AbstractOutgoingMessage(IOutgoingMessage, ABC):
 
 
 class IMessenger(IConnection, ABC):
+    @abstractmethod
     def send(self, message: GenericMessage) -> IOutgoingMessage:
         raise NotImplementedError
 
 
 class IMessageClient(IConnectionClient, ABC):
+    @abstractmethod
     def on_message_received(self, message: GenericMessage):
         raise NotImplementedError
 
 
 class IMessengerBuilder(IConnectionBuilder, ABC):
+    @abstractmethod
     def construct(self, client: IMessageClient, runner: Runner):
         raise NotImplementedError
 

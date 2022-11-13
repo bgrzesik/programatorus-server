@@ -4,7 +4,7 @@ import os
 import select
 import socket
 import threading
-from abc import ABC
+from abc import ABC, abstractmethod
 from concurrent.futures import Future
 from typing import List, Optional, Tuple
 
@@ -24,10 +24,12 @@ MAX_ERROR_COUNT = 4
 
 class IOutgoingPacket(ABC):
     @property
+    @abstractmethod
     def packet(self) -> bytes:
         raise NotImplementedError
 
     @property
+    @abstractmethod
     def future(self) -> Future["IOutgoingPacket"]:
         raise NotImplementedError
 
@@ -47,6 +49,7 @@ class AbstractOutgoingPacket(IOutgoingPacket, ABC):
 
 
 class ITransportClient(IConnectionClient, ABC):
+    @abstractmethod
     def on_packet_received(self, packet: bytes):
         raise NotImplementedError
 
@@ -70,11 +73,13 @@ class ProxyTransportClient(ITransportClient, Actor):
 
 
 class ITransport(IConnection, ABC):
+    @abstractmethod
     def send(self, packet: bytes) -> IOutgoingPacket:
         raise NotImplementedError
 
 
 class ITransportBuilder(IConnectionBuilder, ABC):
+    @abstractmethod
     def construct(self, client: ITransportClient,
                   runner: Optional[Runner] = None):
         raise NotImplementedError
@@ -294,21 +299,27 @@ class StreamingTransport(ITransport, AbstractConnection, ABC):
             # Ensure that state is history is correct
             self.connect()
 
+    @abstractmethod
     def do_connect(self) -> bool:
         raise NotImplementedError
 
+    @abstractmethod
     def input(self, num: int) -> bytes:
         raise NotImplementedError
 
+    @abstractmethod
     def output(self, data: bytes) -> int:
         raise NotImplementedError
 
+    @abstractmethod
     def do_disconnect(self) -> bool:
         raise NotImplementedError
 
+    @abstractmethod
     def wait(self, write: bool) -> Tuple[bool, bool, bool]:
         raise NotImplementedError
 
+    @abstractmethod
     def notify(self):
         raise NotImplementedError
 
@@ -374,6 +385,7 @@ class StreamingTransport(ITransport, AbstractConnection, ABC):
         logging.debug("_io_thread(): Exited")
 
     @property
+    @abstractmethod
     def is_connected(self) -> bool:
         raise NotImplementedError
 
