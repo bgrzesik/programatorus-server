@@ -1,23 +1,27 @@
 import logging
 import socket
-from concurrent.futures import Future
+from typing import List
 from datetime import datetime
+from concurrent.futures import Future
 
 import Adafruit_SSD1306
-from google.protobuf.empty_pb2 import Empty as EmptyProto
 from gpiozero import Button
 from PIL import ImageDraw, Image
 
-from server.comm.listener.bt import BluetoothListener
-from server.comm.listener.listener import IListenerClient
-from server.comm.presentation.messenger import Messenger
-from server.comm.presentation.protocol_messenger import ProtocolMessenger
-from server.comm.presentation.protocol_pb2 import GenericMessage
-from server.comm.session.session import ISessionClient, Session
+from server.target.request_handler import Proxy, RequestHandler
 from server.target.demo_store import get_files
-from server.target.request_handler import RequestHandler, FlashService, Proxy
+from server.target.flash import FlashService
 from server.ui.menu import MenuItem, Menu
 from server.ui.pair import PairDialog
+from server.comm import protocol
+from server.comm.app import RequestRouter
+from server.comm.connection import IConnectionClient
+from server.comm.listener.listener import IListenerClient
+from server.comm.listener.bt import BluetoothListener
+from server.comm.presentation.messenger import Messenger
+from server.comm.presentation.protocol_messenger import ProtocolMessenger
+from server.comm.transport.transport import ITransportBuilder
+from server.comm.session.session import Session
 
 
 class TimeMenuItem(MenuItem):
@@ -72,33 +76,48 @@ class ProgramFlashMenuItem(MenuItem):
         )
 
 
-class SessionClient(ISessionClient):
-    def on_request(self, request):
-        logging.info(f"on_request(): {request}")
-        future: Future[GenericMessage] = Future()
-        future.set_result(GenericMessage(ok=EmptyProto()))
+class GetBoardsResponder(protocol.OnGetBoards):
+
+    def on_request(self, request) -> Future[protocol.Boards]:
+        future: Future[protocol.Boards] = Future()
+        future.set_result(protocol.Boards(
+            boards=["test 0", "test 1"]
+        ))
         return future
+
+
+class MobileClient(IConnectionClient):
+
+    def __init__(self, transport: ITransportBuilder):
+        self._router = RequestRouter(
+            GetBoardsResponder(),
+            client=self
+        )
+
+        self._session = Session.Builder(
+            messenger=Messenger.Builder(
+                messenger=ProtocolMessenger.Builder(
+                    transport=transport)
+            )
+        ).build(self._router)
+
+        self._session.reconnect()
+
+    def on_error(self):
+        pass
 
     def on_state_changed(self, state):
         logging.info(f"on_state_changed(): {state}")
 
 
 class ListenerClient(IListenerClient):
+
     def __init__(self):
-        self._sessions = []
+        self._clients: List[MobileClient] = []
 
-    def on_connect(self, transport_builder):
+    def on_connect(self, transport_builder: ITransportBuilder):
         logging.info("on_connect():")
-        session = Session.Builder(
-            messenger=Messenger.Builder(
-                messenger=ProtocolMessenger.Builder(
-                    transport=transport_builder)
-            )
-        ).build(SessionClient())
-
-        session.reconnect()
-
-        self._sessions.append(session)
+        self._clients.append(MobileClient(transport_builder))
 
 
 def main():
