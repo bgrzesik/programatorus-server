@@ -19,6 +19,26 @@ message SetSessionId {
   uint64 sessionId = 1;
 }
 
+message GetBoardsRequest {
+}
+
+message GetBoardsResponse {
+  repeated string name = 1;
+}
+
+message DeviceUpdateStatus {
+  enum Status {
+    UNREACHABLE = 0;
+    READY = 1;
+    FLASHING = 2;
+    ERROR = 3;
+  }
+
+  Status status = 1;
+  optional float flashingProgress = 2;
+  optional string image = 3;
+}
+
 message GenericMessage {
   uint64 sessionId = 1;
 
@@ -31,9 +51,15 @@ message GenericMessage {
   oneof payload {
     SetSessionId setSessionId = 100;
     google.protobuf.Empty heartbeat = 101;
+    google.protobuf.Empty ok = 102;
 
-    TestMessage test = 201;
-    ErrorMessage error = 202;
-    google.protobuf.Empty ok = 203;
+    GetBoardsRequest getBoardsRequest = 200;
+    GetBoardsResponse getBoardsResponse = 201;
+
+    DeviceUpdateStatus deviceUpdateStatus = 202;
+    // Response: Ok(102)
+
+    TestMessage test = 301;
+    ErrorMessage error = 302;
   }
 }
