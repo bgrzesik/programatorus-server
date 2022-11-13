@@ -3,17 +3,30 @@ from concurrent.futures import Future
 
 from server.actor import Runner
 from server.comm.connection import ConnectionState
-from server.comm.presentation.messenger import IMessenger, IMessageClient, IOutgoingMessage, AbstractOutgoingMessage, \
-    IMessengerBuilder
+from server.comm.presentation.messenger import (
+    IMessenger,
+    IMessageClient,
+    IOutgoingMessage,
+    AbstractOutgoingMessage,
+    IMessengerBuilder,
+)
 from server.comm.presentation.protocol_pb2 import GenericMessage
-from server.comm.transport.transport import ITransport, ITransportClient, IOutgoingPacket, ITransportBuilder
+from server.comm.transport.transport import (
+    ITransport,
+    ITransportClient,
+    IOutgoingPacket,
+    ITransportBuilder,
+)
 
 
 class ProtocolMessenger(IMessenger):
+    def __init__(self, transport_builder: ITransportBuilder,
+                 client: IMessageClient,
+                 runner: Runner):
 
-    def __init__(self, transport_builder: ITransportBuilder, client, runner=None):
-        client = ProtocolMessenger.Client(client)
-        self._transport: ITransport = transport_builder.build(client, runner=runner)
+        wrapped_client = ProtocolMessenger.Client(client)
+        self._transport: ITransport = transport_builder.build(wrapped_client,
+                                                              runner=runner)
 
     @property
     def state(self) -> ConnectionState:
@@ -46,7 +59,6 @@ class ProtocolMessenger(IMessenger):
                 self.future.set_exception(exception)
 
     class Client(ITransportClient):
-
         def __init__(self, client):
             self.client: IMessageClient = client
 
@@ -54,17 +66,17 @@ class ProtocolMessenger(IMessenger):
             logging.debug(f"on_packet_received(): len = {len(packet)}")
             message = GenericMessage()
             message.ParseFromString(packet)
-            logging.debug(f"on_packet_received(): payload {message.WhichOneof('payload')}")
+            logging.debug("on_packet_received(): payload "
+                          f"{message.WhichOneof('payload')}")
             self.client.on_message_received(message)
 
         def on_state_changed(self, state: ConnectionState):
             self.client.on_state_changed(state)
 
     class Builder(IMessengerBuilder):
-
         def __init__(self, transport=None, runner=None):
             super().__init__(runner=runner)
             self._transport = transport
 
-        def construct(self, client: IMessageClient, runner: Runner = None):
-            return ProtocolMessenger(self._transport, client)
+        def construct(self, client: IMessageClient, runner: Runner):
+            return ProtocolMessenger(self._transport, client, runner)

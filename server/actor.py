@@ -1,34 +1,39 @@
 import functools
 import logging
 import threading
-from concurrent.futures import ThreadPoolExecutor, Future
-from typing import Set
+from concurrent.futures import Future, ThreadPoolExecutor
+from typing import Optional, Set
 
 CORRECT_THREAD_ATTR = "correct_thread"
 
 
 class Runner(object):
-
     def __init__(self, name=None):
         def init_thread():
             nonlocal self
             setattr(self._thread_local, CORRECT_THREAD_ATTR, True)
             logging.debug(f"init_actor_thread(): Starting thread {self.name}")
 
-        self.name = name
-        self._guards = set()
+        self.name: str = name
+        self._guards: Set[object] = set()
         self._timers: Set[threading.Timer] = set()
         self._cancel_timers = False
         self._thread_local = threading.local()
-        self._executor = ThreadPoolExecutor(1, thread_name_prefix=name, initializer=init_thread)
+        self._executor = ThreadPoolExecutor(1,
+                                            thread_name_prefix=name,
+                                            initializer=init_thread)
 
     def is_valid_thread(self):
         return getattr(self._thread_local, CORRECT_THREAD_ATTR, False)
 
-    def run_on_executor(self, func, *args, timeout: float = None, force_schedule: bool = False, **kwargs):
+    def run_on_executor(self, func, *args,
+                        timeout: Optional[float] = None,
+                        force_schedule: bool = False, **kwargs):
         if timeout is not None and timeout > 0:
-            # We need to wrap future that is going to be created after specified time passes
-            future = Future()
+            # We need to wrap future that is going
+            # to be created after specified time passes
+            future: Future = Future()
+            timer = threading.Timer(timeout, lambda: ())
 
             @functools.wraps(func)
             def wrapper():
@@ -39,7 +44,8 @@ class Runner(object):
                     return
 
                 try:
-                    executor_future = self._executor.submit(func, *args, *kwargs)
+                    executor_future = self._executor.submit(
+                        func, *args, *kwargs)
                 except Exception as exception:
                     future.set_exception(exception)
                     return
@@ -55,8 +61,8 @@ class Runner(object):
 
                 executor_future.add_done_callback(done_cb)
 
-            timer = threading.Timer(timeout, wrapper)
             self._timers.add(timer)
+            timer.function = wrapper
             timer.daemon = True
             timer.start()
             return future
@@ -73,7 +79,8 @@ class Runner(object):
 
         return future
 
-    def run_guarded(self, func, *args, timeout=None, force_schedule=True, **kwargs):
+    def run_guarded(self, func, *args,
+                    timeout=None, force_schedule=True, **kwargs):
         if self.is_guarded_pending(func):
             return
 
@@ -86,7 +93,9 @@ class Runner(object):
             self._guards.remove(func)
             func(*args, *kwargs)
 
-        return self.run_on_executor(wrapper, timeout=timeout, force_schedule=force_schedule)
+        return self.run_on_executor(wrapper,
+                                    timeout=timeout,
+                                    force_schedule=force_schedule)
 
     def is_guarded_pending(self, func):
         return func in self._guards
@@ -102,7 +111,9 @@ class Runner(object):
 
 
 class Actor(object):
-    def __init__(self, runner: Runner = None, parent: "Actor" = None):
+    def __init__(self,
+                 runner: Optional[Runner] = None,
+                 parent: Optional["Actor"] = None):
         assert not (runner is not None and parent is not None)
         if runner is not None:
             self._runner = runner
@@ -133,15 +144,21 @@ class Actor(object):
                 force_schedule = force_schedule or force_schedule_parent
 
                 if guarded:
-                    return self._runner.run_guarded(func, *args,
-                                                    timeout=timeout,
-                                                    force_schedule=force_schedule,
-                                                    **kwargs)
+                    return self._runner.run_guarded(
+                        func,
+                        *args,
+                        timeout=timeout,
+                        force_schedule=force_schedule,
+                        **kwargs,
+                    )
                 else:
-                    return self._runner.run_on_executor(func, *args,
-                                                        timeout=timeout,
-                                                        force_schedule=force_schedule,
-                                                        **kwargs)
+                    return self._runner.run_on_executor(
+                        func,
+                        *args,
+                        timeout=timeout,
+                        force_schedule=force_schedule,
+                        **kwargs,
+                    )
 
             return wrapper
 
@@ -154,7 +171,8 @@ class Actor(object):
             def wrapper(*args, **kwargs):
                 self: Actor = args[0]
                 if not self.is_actor_thread():
-                    logging.warning(f"{func} was called on invalid non-actor thread")
+                    logging.warning(
+                        f"{func} was called on invalid non-actor thread")
                     assert self.is_actor_thread()
                     if hard:
                         raise SystemError

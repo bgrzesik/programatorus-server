@@ -1,17 +1,32 @@
+import socket
+import logging
 import unittest
+import threading
+from abc import ABC
 from queue import Empty, Queue
+from typing import Optional, List
+from concurrent.futures import Future
 
-from server.comm.transport.transport import *
+from server.comm.transport.transport import (
+    Runner,
+    Transport,
+    ITransport,
+    ITransportClient,
+    ITransportBuilder,
+    IOutgoingPacket,
+    AbstractConnection,
+    ConnectionState,
+    AbstractOutgoingPacket,
+    SocketTransport,
+)
 
 
 class IMockTransportEndpoint(ABC):
-
     def on_packet(self, packet: bytes) -> Optional[bytes]:
         raise NotImplementedError
 
 
 class MockTransport(ITransport, AbstractConnection):
-
     def __init__(self, endpoint, client):
         super().__init__(client)
         self.message_queue: List[MockTransport.PendingPacket] = []
@@ -61,7 +76,6 @@ class MockTransport(ITransport, AbstractConnection):
         self.client.on_packet_received(packet)
 
     class PendingPacket(AbstractOutgoingPacket):
-
         def __init__(self, transport, packet):
             super().__init__(packet, Future())
             self.transport: MockTransport = transport
@@ -78,36 +92,36 @@ class MockTransport(ITransport, AbstractConnection):
 
 
 class LoopbackTransport(MockTransport):
-
     def __init__(self, client):
         super().__init__(LoopbackTransport.Endpoint(), client)
 
     class Endpoint(IMockTransportEndpoint):
-
         def on_packet(self, packet: bytes) -> Optional[bytes]:
             return packet
 
     class Builder(ITransportBuilder):
-        def construct(self, client: ITransportClient, runner: Runner = None):
+        def construct(self, client: ITransportClient,
+                      runner: Optional[Runner] = None):
             return LoopbackTransport(client)
 
 
 class PacketLoopbackTest(unittest.TestCase):
-
     @staticmethod
     def setUpClass(**kwargs) -> None:
         import sys
+
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG,
-                            format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s')
+                            format="%(asctime)s,%(msecs)d %(levelname)-8s "
+                            "[%(filename)s:%(lineno)d] %(message)s")
 
     def test_loopback_send_received(self):
         test_self = self
-        queue = Queue()
+        queue: Queue[bytes] = Queue()
 
         class Client(ITransportClient):
-
             def on_packet_received(self, packet: bytes):
-                logging.debug(f"on_packet_received(): packet={packet.decode('utf-8')}")
+                logging.debug(
+                    f"on_packet_received(): packet={packet.decode('utf-8')}")
                 queue.put(packet)
 
             def on_state_changed(self, state: ConnectionState):
@@ -118,15 +132,16 @@ class PacketLoopbackTest(unittest.TestCase):
                 test_self.fail("on_error():")
 
         client = Client()
-        transport = Transport.Builder(LoopbackTransport.Builder()).build(client)
+        transport = Transport.Builder(
+            LoopbackTransport.Builder()).build(client)
         transport.reconnect()
 
-        packets = []
+        packets: List[IOutgoingPacket] = []
 
         for i in range(10):
-            packet = f"Test {i} packet".encode("utf-8")
-            logging.info(f"test: Sending {packet.decode('utf-8')}")
-            packets.append(transport.send(packet))
+            text = f"Test {i} packet".encode("utf-8")
+            logging.info(f"test: Sending {text.decode('utf-8')}")
+            packets.append(transport.send(text))
 
         for packet in packets:
             received: bytes = queue.get()  # timeout=5.0)
@@ -147,41 +162,47 @@ class PacketLoopbackTest(unittest.TestCase):
 
 
 class SocketPairTransportTest(unittest.TestCase):
-
     @staticmethod
     def setUpClass(**kwargs) -> None:
         import sys
+
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG,
-                            format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s')
+                            format="%(asctime)s,%(msecs)d %(levelname)-8s "
+                            "[%(filename)s:%(lineno)d] %(message)s")
 
     @staticmethod
     def pair_transport(client_a: ITransportClient, client_b: ITransportClient):
         sock_a, sock_b = socket.socketpair()
 
         transport_a = Transport.Builder(
-                transport=SocketTransport.Builder(socket=sock_a, addr=None)).build(client_a)
+            transport=SocketTransport.Builder(socket=sock_a, addr=None)
+        ).build(client_a)
         transport_b = Transport.Builder(
-                transport=SocketTransport.Builder(socket=sock_b, addr=None)).build(client_b)
+            transport=SocketTransport.Builder(socket=sock_b, addr=None)
+        ).build(client_b)
 
         return transport_a, transport_b
 
     def test_both_ways(self):
         class Client(ITransportClient):
-
-            def __init__(self, name: str, queue: Queue):
+            def __init__(self, name: str, queue: Queue[bytes]):
                 self._name = name
                 self._queue = queue
 
             def on_packet_received(self, packet: bytes):
-                logging.debug(f"test_socket_pair_transport(): #{self._name} packet = {packet}")
+                logging.debug(f"test_socket_pair_transport(): #{self._name} "
+                              f"packet = {packet.decode('utf-8')}")
                 self._queue.put(packet)
 
             def on_state_changed(self, state: ConnectionState):
-                logging.debug(f"test_socket_pair_transport(): #{self._name} state = {state}")
+                logging.debug(f"test_socket_pair_transport(): #{self._name} "
+                              f"state = {state}")
 
-        queue_a = Queue()
-        queue_b = Queue()
-        transport_a, transport_b = self.pair_transport(Client("a", queue_a), Client("b", queue_b))
+        queue_a: Queue[bytes] = Queue()
+        queue_b: Queue[bytes] = Queue()
+        transport_a, transport_b = self.pair_transport(
+            Client("a", queue_a), Client("b", queue_b)
+        )
         transport_a.reconnect()
         transport_b.reconnect()
         transport_a.send(b"Test 123")
@@ -204,10 +225,13 @@ class SocketPairTransportTest(unittest.TestCase):
                 self._count = 0
 
             def on_packet_received(self, packet: bytes):
-                logging.debug(f"on_packet_received(): count = {self._count} got {packet}")
+                logging.debug(f"on_packet_received(): count = {self._count} "
+                              f"got {packet.decode('utf-8')}")
                 if self._count > 100:
                     self._event.set()
                     return
+
+                assert self.transport is not None
 
                 self._count += 1
                 self.transport.send(b"Ping")
@@ -220,7 +244,10 @@ class SocketPairTransportTest(unittest.TestCase):
                 self.transport = None
 
             def on_packet_received(self, packet: bytes):
-                logging.debug(f"on_packet_received(): got {packet}")
+                logging.debug("on_packet_received(): "
+                              f"got {packet.decode('utf-8')}")
+
+                assert self.transport is not None
                 self.transport.send(b"Pong")
 
             def on_state_changed(self, state: ConnectionState):
@@ -250,9 +277,11 @@ class SocketPairTransportTest(unittest.TestCase):
         del transport_b
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
 
-    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG,
-                        format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s')
+    logging.basicConfig(stream=sys.stdout,
+                        level=logging.DEBUG,
+                        format="%(asctime)s,%(msecs)d %(levelname)-8s "
+                        "[%(filename)s:%(lineno)d] %(message)s")
     unittest.main()

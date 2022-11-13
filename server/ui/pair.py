@@ -1,5 +1,11 @@
-from server.comm.transport.bt_deprecated import PairThread, INACTIVE, AGENT_SETUP, AWAITING_CONNECTION
-from server.ui.menu import *
+from server.comm.transport.bt_deprecated import (
+    PairThread,
+    INACTIVE,
+    AGENT_SETUP,
+    AWAITING_CONNECTION,
+)
+
+from server.ui.menu import MenuItem, FONT
 
 
 class PairDialog(MenuItem):
@@ -27,8 +33,8 @@ class PairDialog(MenuItem):
 
     def draw(self, draw, x, y):
         if self.is_selected:
-            draw.rectangle((x, y, x + self.width, y + self.height),
-                           outline=1, fill=0)
+            draw.rectangle((x, y, x + self.width, y +
+                           self.height), outline=1, fill=0)
 
         draw.text((x + 1, y), self.pairThread.display_text, font=FONT, fill=1)
         draw.text((x + 1, y + 8), "YES [OK]    NO [<-]", font=FONT, fill=1)

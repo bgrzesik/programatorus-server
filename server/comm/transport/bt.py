@@ -16,16 +16,16 @@ AWAITING_INPUT = 3
 
 
 def pair_trust():
-    child = pexpect.spawn("bluetoothctl", encoding='utf-8')
-    child.sendline('discoverable on')
-    child.sendline('agent off')
-    child.sendline('agent DisplayYesNo')
-    child.sendline('default-agent')
+    child = pexpect.spawn("bluetoothctl", encoding="utf-8")
+    child.sendline("discoverable on")
+    child.sendline("agent off")
+    child.sendline("agent DisplayYesNo")
+    child.sendline("default-agent")
     try:
         child.expect("(yes/no)", timeout=20)
         print(child.before)
         res = input("[y]es/[n]o: ")
-        if res[0] == 'y':
+        if res[0] == "y":
             child.send("yes\ntrust\n")
     except:
         print("Failed to pair.")
@@ -43,8 +43,10 @@ class BTServer(threading.Thread):
 
         self.handlers = {
             CLEAR: lambda msg: None,
-            GET_FILES_REQUEST: lambda msg: self.send(str(get_files()).encode(), JSON_DATA),
-            FLASH_REQUEST: lambda msg: self.flash_request(msg[5:].decode("utf-8"))
+            GET_FILES_REQUEST: lambda msg: self.send(
+                str(get_files()).encode(), JSON_DATA
+            ),
+            FLASH_REQUEST: lambda msg: self.flash_request(msg[5:].decode("utf-8")),
         }
 
     def flash_request(self, data):
@@ -65,10 +67,13 @@ class BTServer(threading.Thread):
         server.listen(1)
         port = server.getsockname()[1]
 
-        bt.advertise_service(server, "BTSrv",
-                             service_id=self.uuid,
-                             service_classes=[self.uuid, bt.SERIAL_PORT_CLASS],
-                             profiles=[bt.SERIAL_PORT_PROFILE])
+        bt.advertise_service(
+            server,
+            "BTSrv",
+            service_id=self.uuid,
+            service_classes=[self.uuid, bt.SERIAL_PORT_CLASS],
+            profiles=[bt.SERIAL_PORT_PROFILE],
+        )
 
         while True:
             print(f"Waiting for connection on RFCOMM channel {port}")
@@ -109,13 +114,12 @@ def main():
     server.run()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pair_trust()
     main()
 
 
 class PairThread(threading.Thread):
-
     def __init__(self):
         threading.Thread.__init__(self)
         self.state = INACTIVE
@@ -127,11 +131,11 @@ class PairThread(threading.Thread):
         self.state = AGENT_SETUP
         # print("agent setup")
         self.display_text = "setup ..."
-        child = pexpect.spawn("bluetoothctl", encoding='utf-8')
-        child.sendline('discoverable on')
-        child.sendline('agent off')
-        child.sendline('agent DisplayYesNo')
-        child.sendline('default-agent')
+        child = pexpect.spawn("bluetoothctl", encoding="utf-8")
+        child.sendline("discoverable on")
+        child.sendline("agent off")
+        child.sendline("agent DisplayYesNo")
+        child.sendline("default-agent")
 
         # print("waiting for connection")
         fail = None

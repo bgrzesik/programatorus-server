@@ -12,6 +12,7 @@ class ActorTests(unittest.TestCase):
     @staticmethod
     def setUpClass() -> None:
         import sys
+
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
     def setUp(self) -> None:
@@ -44,7 +45,7 @@ class ActorTests(unittest.TestCase):
         try:
             self.tester.asserted(value)
             self.fail("Should fail with not run on proper thread")
-        except AssertionError or SystemError:
+        except (AssertionError, SystemError):
             pass
 
     def test_single_timeout(self):
@@ -108,10 +109,9 @@ class ActorTests(unittest.TestCase):
             self.assertIs(value, self.tester.queue.get(timeout=1.0))
 
     class Tester(Actor):
-
         def __init__(self):
             super().__init__()
-            self.queue = Queue()
+            self.queue: Queue[str] = Queue()
             self.event = threading.Event()
 
         @Actor.handler()
@@ -141,7 +141,8 @@ class ActorTests(unittest.TestCase):
             self.asserted(value)
 
         @Actor.handler(guarded=False)
-        def use_other_not_guarded(self, actor_tests: "ActorTests", amount, value):
+        def use_other_not_guarded(self, actor_tests: "ActorTests", amount,
+                                  value):
             logging.debug(f"use_other_not_guarded(): value={value}")
             for _ in range(amount):
                 actor_tests.assertTrue(self.not_guarded(value).done())
@@ -156,5 +157,7 @@ class ActorTests(unittest.TestCase):
 if __name__ == "__main__":
     import sys
 
-    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG,
+                        format="%(asctime)s,%(msecs)d %(levelname)-8s "
+                        "[%(filename)s:%(lineno)d] %(message)s")
     unittest.main()

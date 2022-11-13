@@ -35,14 +35,15 @@ class BluetoothListener(SocketListener, Actor):
 
         logging.debug("create_socket(): Advertising service")
 
-        bt.advertise_service(server, "Programatorus",
-                             service_id=BluetoothListener.UUID,
-                             service_classes=[BluetoothListener.UUID, bt.SERIAL_PORT_CLASS],
-                             profiles=[bt.SERIAL_PORT_PROFILE])
+        bt.advertise_service(
+            server,
+            "Programatorus",
+            service_id=BluetoothListener.UUID,
+            service_classes=[BluetoothListener.UUID, bt.SERIAL_PORT_CLASS],
+            profiles=[bt.SERIAL_PORT_PROFILE],
+        )
 
         port = server.getsockname()[1]
         logging.info(f"create_socket(): Listening on {port}")
 
         return server
-
-

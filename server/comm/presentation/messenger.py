@@ -5,12 +5,16 @@ from concurrent.futures import Future
 from typing import Optional
 
 from server.actor import Actor, Runner
-from server.comm.connection import IConnection, IConnectionClient, ConnectionState, IConnectionBuilder
+from server.comm.connection import (
+    IConnection,
+    IConnectionClient,
+    ConnectionState,
+    IConnectionBuilder,
+)
 from server.comm.presentation.protocol_pb2 import GenericMessage
 
 
 class IOutgoingMessage(ABC):
-
     @property
     def message(self) -> GenericMessage:
         raise NotImplementedError
@@ -21,7 +25,6 @@ class IOutgoingMessage(ABC):
 
 
 class AbstractOutgoingMessage(IOutgoingMessage, ABC):
-
     def __init__(self, message, future):
         self._message = message
         self._future = future
@@ -36,30 +39,27 @@ class AbstractOutgoingMessage(IOutgoingMessage, ABC):
 
 
 class IMessenger(IConnection, ABC):
-
     def send(self, message: GenericMessage) -> IOutgoingMessage:
         raise NotImplementedError
 
 
 class IMessageClient(IConnectionClient, ABC):
-
     def on_message_received(self, message: GenericMessage):
         raise NotImplementedError
 
 
 class IMessengerBuilder(IConnectionBuilder, ABC):
-
-    def construct(self, client: IMessageClient, runner: Runner = None):
+    def construct(self, client: IMessageClient, runner: Runner):
         raise NotImplementedError
 
-    def build(self, client: IMessageClient, runner: Runner = None):
+    def build(self, client: IMessageClient, runner: Optional[Runner] = None):
         return self.construct(client, runner or self.runner)
 
 
 class ProxyMessageClient(IMessageClient, Actor):
-
-    def __init__(self, impl, parent=None, executor=None):
-        super(ProxyMessageClient, self).__init__(parent=parent, executor=executor)
+    def __init__(self, impl, parent=None, runner=None):
+        super(ProxyMessageClient, self).__init__(
+            parent=parent, runner=runner)
         self._impl: IMessageClient = impl
 
     @Actor.handler()
@@ -76,8 +76,9 @@ class ProxyMessageClient(IMessageClient, Actor):
 
 
 class Messenger(IMessenger, Actor):
-
-    def __init__(self, messenger_builder: IMessengerBuilder, client, runner=None):
+    def __init__(self, messenger_builder: IMessengerBuilder,
+                 client: IMessageClient,
+                 runner=None):
         Actor.__init__(self, runner=runner)
         client = Messenger.Client(self, client)
         self._impl: IMessenger = messenger_builder.build(client, runner)
@@ -105,7 +106,6 @@ class Messenger(IMessenger, Actor):
         self._impl.disconnect()
 
     class OutgoingMessage(AbstractOutgoingMessage):
-
         def __init__(self, messenger, message):
             super().__init__(message, Future())
             self.messenger: Messenger = messenger
@@ -119,7 +119,8 @@ class Messenger(IMessenger, Actor):
 
             self.last_marker = object()
             self.impl = outgoing
-            done_cb = functools.partial(self.on_impl_future_done, self.last_marker)
+            done_cb = functools.partial(
+                self.on_impl_future_done, self.last_marker)
             self.impl.future.add_done_callback(done_cb)
 
         def on_impl_future_done(self, marker: object, future: Future):
@@ -128,6 +129,8 @@ class Messenger(IMessenger, Actor):
                 # Skip this done notification to avoid zombie execution
                 logging.debug("on_impl_future_done(): Stale marker")
                 return
+
+            assert self.impl is not None
 
             exception = self.impl.future.exception()
             if not exception:
@@ -148,7 +151,9 @@ class Messenger(IMessenger, Actor):
         @Actor.handler()
         def on_state_changed(self, state: ConnectionState):
             if self.last_state == state:
-                logging.debug(f"on_state_changed(): Discarding on_state_changed {state}")
+                logging.debug(
+                    f"on_state_changed(): Discarding on_state_changed {state}"
+                )
                 return
 
             self.last_state = state
@@ -159,7 +164,6 @@ class Messenger(IMessenger, Actor):
             self.client.on_error()
 
     class Builder(IMessengerBuilder):
-
         def __init__(self, messenger=None, runner=None):
             super().__init__(runner=runner)
             self._messenger: IMessengerBuilder = messenger
@@ -167,5 +171,5 @@ class Messenger(IMessenger, Actor):
         def set_messenger(self, messenger):
             self._messenger = messenger
 
-        def construct(self, client: IMessageClient, runner: Runner = None):
+        def construct(self, client: IMessageClient, runner: Runner):
             return Messenger(self._messenger, client, runner=runner)

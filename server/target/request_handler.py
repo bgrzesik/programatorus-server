@@ -5,7 +5,6 @@ from server.target.flash import FlashService
 
 
 class RequestHandler(object):
-
     def __init__(self, executor: futures.Executor, flash_service: FlashService):
         super().__init__()
         self.executor = executor
@@ -17,11 +16,18 @@ class RequestHandler(object):
         }
 
     def flash(self, args):
-        cmd = ["-f", "/home/pi/bootloader/my_rpi.cfg",
-               "-c", "transport select swd",
-               "-f", f"/home/pi/openocd/tcl/target/{args['board']}",
-               "-c", "targets",
-               "-c", f"program /home/pi/bin_files/{args['target']} verify reset exit"]
+        cmd = [
+            "-f",
+            "/home/pi/bootloader/my_rpi.cfg",
+            "-c",
+            "transport select swd",
+            "-f",
+            f"/home/pi/openocd/tcl/target/{args['board']}",
+            "-c",
+            "targets",
+            "-c",
+            f"program /home/pi/bin_files/{args['target']} verify reset exit",
+        ]
         return self.flash_service.flash(cmd)
 
     def start_async(self, request, args):
@@ -35,7 +41,6 @@ class RequestHandler(object):
 
 
 class Proxy(object):
-
     def __init__(self, executor: futures.Executor, service: RequestHandler):
         super().__init__()
         self.executor = executor
@@ -60,16 +65,13 @@ class Proxy(object):
         return proxy
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     fs = FlashService()
     requestHandler = RequestHandler.serve(fs)
     proxy = Proxy.serve(requestHandler)
 
     request = "flash"
-    args = {
-        'board': 'stm32f0x.cfg',
-        'target': 'f07_boot.elf'
-    }
+    args = {"board": "stm32f0x.cfg", "target": "f07_boot.elf"}
 
     futs = [proxy.start_async(request, args) for _ in range(1)]
 

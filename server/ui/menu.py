@@ -3,8 +3,8 @@ import os
 from PIL import ImageFont, Image
 
 base_dir = os.path.dirname(os.path.realpath(__file__))
-BOTTOM_BAR = Image.open(os.path.join(base_dir, 'bar.png'))
-FONT = ImageFont.truetype(os.path.join(base_dir, 'slkscr.ttf'), 8)
+BOTTOM_BAR = Image.open(os.path.join(base_dir, "bar.png"))
+FONT = ImageFont.truetype(os.path.join(base_dir, "slkscr.ttf"), 8)
 
 
 class Menu(object):
@@ -71,6 +71,6 @@ class MenuItem(object):
 
     def draw(self, draw, x, y):
         if self.is_selected:
-            draw.rectangle((x, y, x + self.width, y + self.height),
-                           outline=1, fill=0)
+            draw.rectangle((x, y, x + self.width, y +
+                           self.height), outline=1, fill=0)
         draw.text((x + 1, y), self.visible_text, font=FONT, fill=1)

@@ -7,13 +7,18 @@ from queue import Queue, Empty
 from threading import Timer
 from typing import List, Optional
 
+from server.actor import Runner
 from server.comm.connection import AbstractConnection, ConnectionState
-from server.comm.transport.transport import ITransport, IOutgoingPacket, ITransportClient
+from server.comm.transport.transport import (
+    ITransport,
+    IOutgoingPacket,
+    ITransportClient,
+    ITransportBuilder,
+)
 from server.comm.transport.transport import Transport
 
 
 class IMockTransportEndpoint(ABC):
-
     def on_packet(self, packet: bytes) -> Optional[bytes]:
         raise NotImplementedError
 
@@ -22,11 +27,13 @@ def test_timeout(timeout):
     def decorator(func):
         def wrapper(*args, **kwargs):
             import ctypes
+
             exception = ctypes.py_object(TimeoutError)
             tid = threading.current_thread().ident
-            timer = Timer(timeout,
-                          ctypes.pythonapi.PyThreadState_SetAsyncExc,
-                          (tid, exception))
+            timer = Timer(
+                timeout, ctypes.pythonapi.PyThreadState_SetAsyncExc, (
+                    tid, exception)
+            )
 
             timer.start()
             func(*args, **kwargs)
@@ -38,7 +45,6 @@ def test_timeout(timeout):
 
 
 class MockTransport(ITransport, AbstractConnection):
-
     def __init__(self, endpoint, client):
         super().__init__(client)
         self.message_queue: List[MockTransport.PendingPacket] = []
@@ -47,7 +53,7 @@ class MockTransport(ITransport, AbstractConnection):
 
     def send(self, packet: bytes) -> IOutgoingPacket:
         logging.debug("send():")
-        pending = MockTransport.PendingPacket(packet)
+        pending = MockTransport.PendingPacket(self, packet)
         self.message_queue.append(pending)
         self.pump_pending_messages()
         return pending
@@ -88,11 +94,10 @@ class MockTransport(ITransport, AbstractConnection):
         self.client.on_packet_received(packet)
 
     class PendingPacket(IOutgoingPacket):
-
         def __init__(self, transport, packet):
             self.transport: MockTransport = transport
             self.packet: bytes = packet
-            self.future = Future()
+            self.future: Future = Future()
 
         def send(self):
             assert self.transport.state == ConnectionState.CONNECTED
@@ -102,33 +107,48 @@ class MockTransport(ITransport, AbstractConnection):
                 logging.debug("send(): Sending to mocked endpoint")
                 self.transport.mock_packet(response)
 
+    class Builder(ITransportBuilder):
+        def __init__(self, endpoint: Optional[IMockTransportEndpoint] = None):
+            self._endpoint = endpoint
+
+        def set_endpoint(self, endpoint: IMockTransportEndpoint):
+            self._endpoint = endpoint
+
+        def construct(self, client: ITransportClient,
+                      runner: Optional[Runner] = None):
+            assert self._endpoint is not None
+            return MockTransport(self._endpoint, client)
+
 
 class LoopbackTransport(MockTransport):
-
     def __init__(self, client):
         super().__init__(LoopbackTransport.Endpoint(), client)
 
     class Endpoint(IMockTransportEndpoint):
-
         def on_packet(self, packet: bytes) -> Optional[bytes]:
             return packet
 
+    class Builder(ITransportBuilder):
+        def construct(self, client: ITransportClient,
+                      runner: Optional[Runner] = None):
+            return LoopbackTransport(client)
+
 
 class PacketLoopbackTest(unittest.TestCase):
-
     def setUp(self) -> None:
         import sys
+
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
     @test_timeout(10.0)
     def test_loopback_send_received(self):
         test_self = self
-        queue = Queue()
+        queue: Queue[bytes] = Queue()
 
         class Client(ITransportClient):
-
             def on_packet_received(self, packet: bytes):
-                logging.debug(f"on_packet_received(): packet={packet.decode('utf-8')}")
+                logging.debug(
+                    f"on_packet_received(): packet={packet.decode('utf-8')}")
                 queue.put(packet)
 
             def on_state_changed(self, state: ConnectionState):
@@ -139,13 +159,13 @@ class PacketLoopbackTest(unittest.TestCase):
                 test_self.fail("on_error():")
 
         client = Client()
-        transport = Transport(LoopbackTransport, client)
+        transport = Transport(LoopbackTransport.Builder(), client)
 
-        packets = []
+        packets: List[IOutgoingPacket] = []
 
         for i in range(10):
-            packet = f"Test {i} packet".encode("utf-8")
-            packets.append(transport.send(packet).future.result())
+            text = f"Test {i} packet".encode("utf-8")
+            packets.append(transport.send(text).future.result())
 
         for packet in packets:
             received: bytes = queue.get(block=True)
@@ -161,7 +181,10 @@ class PacketLoopbackTest(unittest.TestCase):
             pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
-    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+
+    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG,
+                        format="%(asctime)s,%(msecs)d %(levelname)-8s "
+                        "[%(filename)s:%(lineno)d] %(message)s")
     unittest.main()
