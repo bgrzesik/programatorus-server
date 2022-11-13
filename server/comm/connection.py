@@ -1,7 +1,6 @@
 import enum
 import logging
 from abc import ABC
-from typing import Optional
 
 from server.actor import Runner
 
@@ -17,7 +16,6 @@ class ConnectionState(enum.Enum):
 
 
 class IConnection(object):
-
     @property
     def state(self) -> ConnectionState:
         raise NotImplementedError
@@ -34,7 +32,6 @@ class IConnection(object):
 
 
 class IConnectionBuilder(ABC):
-
     def __init__(self, runner=None):
         self.runner: Runner = runner
 
@@ -43,7 +40,6 @@ class IConnectionBuilder(ABC):
 
 
 class IConnectionClient(object):
-
     def on_state_changed(self, state: ConnectionState):
         raise NotImplementedError
 
@@ -52,7 +48,6 @@ class IConnectionClient(object):
 
 
 class AbstractConnection(IConnection, ABC):
-
     def __init__(self, client):
         self._state: ConnectionState = ConnectionState.DISCONNECTED
         self._client: IConnectionClient = client

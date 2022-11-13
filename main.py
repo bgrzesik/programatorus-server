@@ -4,21 +4,20 @@ from concurrent.futures import Future
 from datetime import datetime
 
 import Adafruit_SSD1306
-from PIL import ImageDraw
-from gpiozero import Button
-
 from google.protobuf.empty_pb2 import Empty as EmptyProto
+from gpiozero import Button
+from PIL import ImageDraw, Image
 
-from server.comm.listener.listener import IListenerClient
 from server.comm.listener.bt import BluetoothListener
+from server.comm.listener.listener import IListenerClient
+from server.comm.presentation.messenger import Messenger
 from server.comm.presentation.protocol_messenger import ProtocolMessenger
 from server.comm.presentation.protocol_pb2 import GenericMessage
-from server.comm.presentation.messenger import Messenger
-from server.comm.session.session import Session, ISessionClient
+from server.comm.session.session import ISessionClient, Session
 from server.target.demo_store import get_files
-from server.ui.menu import *
+from server.target.request_handler import RequestHandler, FlashService, Proxy
+from server.ui.menu import MenuItem, Menu
 from server.ui.pair import PairDialog
-from server.target.request_handler import *
 
 
 class TimeMenuItem(MenuItem):
@@ -57,7 +56,7 @@ class IpMenuItem(MenuItem):
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.connect(("8.8.8.8", 80))
             return str(s.getsockname()[0])
-        except:
+        except Exception:
             return "Get IP error"
 
 
@@ -69,14 +68,14 @@ class ProgramFlashMenuItem(MenuItem):
 
     def on_click(self, select=True):
         self.proxy.start_async(
-            "flash", {'board': 'rp2040.cfg', 'target': self.file_name})
+            "flash", {"board": "rp2040.cfg", "target": self.file_name}
+        )
 
 
 class SessionClient(ISessionClient):
-
     def on_request(self, request):
         logging.info(f"on_request(): {request}")
-        future = Future()
+        future: Future[GenericMessage] = Future()
         future.set_result(GenericMessage(ok=EmptyProto()))
         return future
 
@@ -85,21 +84,22 @@ class SessionClient(ISessionClient):
 
 
 class ListenerClient(IListenerClient):
-
     def __init__(self):
         self._sessions = []
 
     def on_connect(self, transport_builder):
-        logging.info(f"on_connect():")
+        logging.info("on_connect():")
         session = Session.Builder(
             messenger=Messenger.Builder(
                 messenger=ProtocolMessenger.Builder(
-                    transport=transport_builder)))\
-            .build(SessionClient())
+                    transport=transport_builder)
+            )
+        ).build(SessionClient())
 
         session.reconnect()
 
         self._sessions.append(session)
+
 
 def main():
     fs = FlashService()
@@ -125,7 +125,7 @@ def main():
         MenuItem("1 button"),
     ]
 
-    for file_name in get_files()['binary']:
+    for file_name in get_files()["binary"]:
         menu_items.append(ProgramFlashMenuItem(file_name, proxy))
 
     menu = Menu(menu_items)
@@ -138,7 +138,7 @@ def main():
     disp.clear()
     disp.display()
 
-    image = Image.new('1', (128, 32))
+    image = Image.new("1", (128, 32))
     draw = ImageDraw.Draw(image)
 
     while True:
@@ -149,9 +149,9 @@ def main():
         disp.display()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG,
-                        format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s')
-
+                        format="%(asctime)s,%(msecs)d %(levelname)-8s "
+                        "[%(filename)s:%(lineno)d] %(message)s")
     main()

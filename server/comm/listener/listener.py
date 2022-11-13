@@ -1,29 +1,29 @@
-import functools
 import logging
 import socket
 from abc import ABC
 from typing import Optional
 
 from server.actor import Actor
-from server.comm.transport.transport import Transport, SocketTransport, ITransportBuilder
+from server.comm.transport.transport import (
+    Transport,
+    SocketTransport,
+    ITransportBuilder,
+)
 
 
 class IListener(ABC):
-
     def listen(self):
         raise NotImplementedError
 
 
 class IListenerClient(ABC):
-
     def on_connect(self, transport_builder: ITransportBuilder):
         raise NotImplementedError
 
 
 class ProxyListenerClient(IListenerClient, Actor):
-
-    def __init__(self, impl, parent=None, executor=None):
-        super().__init__(parent=parent, executor=executor)
+    def __init__(self, impl, parent=None, runner=None):
+        super().__init__(parent=parent, runner=runner)
         self.impl: IListenerClient = impl
 
     @Actor.handler()
@@ -32,7 +32,6 @@ class ProxyListenerClient(IListenerClient, Actor):
 
 
 class SocketListener(IListener, Actor, ABC):
-
     def __init__(self, client, wrap_transport=True):
         super().__init__()
         self._client: IListenerClient = client
@@ -58,7 +57,7 @@ class SocketListener(IListener, Actor, ABC):
             self._server = self.create_socket()
 
             while self._listening:
-                logging.info(f"listen(): Waiting for connection")
+                logging.info("listen(): Waiting for connection")
 
                 try:
                     client, addr = self._server.accept()

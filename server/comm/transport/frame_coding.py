@@ -1,21 +1,23 @@
-class FrameEncoder(object):
+from typing import List, Optional
 
+
+class FrameEncoder(object):
     def __init__(self, consumer):
         self._consumer = consumer
         self._buffer = []
 
-    def write_byte(self, byte):
+    def write_byte(self, byte: int):
         if byte != 0:
             self._buffer.append(byte)
         else:
             self._write_slice(False)
 
-    def write_slice_size(self, size):
-        assert size <= 0x3fff
+    def write_slice_size(self, size: int):
+        assert size <= 0x3FFF
 
-        lo = 0x80 | (size & 0x7f)
+        lo = 0x80 | (size & 0x7F)
         size = size >> 7
-        hi = 0x80 | (size & 0x7f)
+        hi = 0x80 | (size & 0x7F)
 
         self._consumer([lo, hi])
 
@@ -40,13 +42,12 @@ class FrameEncoder(object):
 
 
 class FrameDecoder(object):
-
     def __init__(self, producer):
         self._producer = producer
         self._eof = False
-        self._buffer = []
+        self._buffer: List[int] = []
 
-    def read_frame(self):
+    def read_frame(self) -> Optional[List[int]]:
         self._buffer = []
 
         # Skip partial frame
@@ -68,7 +69,7 @@ class FrameDecoder(object):
             return None
 
         while read != 0:
-            slice_size = read & 0x7f
+            slice_size = read & 0x7F
 
             read = self._producer()
             if read == 0 or read == -1:
@@ -76,7 +77,7 @@ class FrameDecoder(object):
                 self._eof = read == -1
                 return None
 
-            slice_size = slice_size | ((read & 0x7f) << 7)
+            slice_size = slice_size | ((read & 0x7F) << 7)
 
             for i in range(slice_size):
                 read = self._producer()

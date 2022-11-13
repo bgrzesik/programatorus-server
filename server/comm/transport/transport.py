@@ -6,11 +6,16 @@ import socket
 import threading
 from abc import ABC
 from concurrent.futures import Future
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from server.actor import Actor, Runner
-from server.comm.connection import IConnection, IConnectionClient, AbstractConnection, ConnectionState, \
-    IConnectionBuilder
+from server.comm.connection import (
+    IConnection,
+    IConnectionClient,
+    AbstractConnection,
+    ConnectionState,
+    IConnectionBuilder,
+)
 from server.comm.transport.frame_coding import FrameDecoder, FrameEncoder
 
 RECONNECT_TIMEOUT = 2.0  # seconds
@@ -18,39 +23,35 @@ MAX_ERROR_COUNT = 4
 
 
 class IOutgoingPacket(ABC):
-
     @property
     def packet(self) -> bytes:
         raise NotImplementedError
 
     @property
-    def future(self) -> Future:
+    def future(self) -> Future["IOutgoingPacket"]:
         raise NotImplementedError
 
 
 class AbstractOutgoingPacket(IOutgoingPacket, ABC):
-
     def __init__(self, packet, future=None):
         self._packet: bytes = packet
-        self._future: Future = future or Future()
+        self._future: Future[IOutgoingPacket] = future or Future()
 
     @property
     def packet(self) -> bytes:
         return self._packet
 
     @property
-    def future(self) -> Future:
+    def future(self) -> Future[IOutgoingPacket]:
         return self._future
 
 
 class ITransportClient(IConnectionClient, ABC):
-
     def on_packet_received(self, packet: bytes):
         raise NotImplementedError
 
 
 class ProxyTransportClient(ITransportClient, Actor):
-
     def __init__(self, impl, parent=None, runner=None):
         super().__init__(parent=parent, runner=runner)
         self.impl: ITransportClient = impl
@@ -69,34 +70,36 @@ class ProxyTransportClient(ITransportClient, Actor):
 
 
 class ITransport(IConnection, ABC):
-
     def send(self, packet: bytes) -> IOutgoingPacket:
         raise NotImplementedError
 
 
 class ITransportBuilder(IConnectionBuilder, ABC):
-
-    def construct(self, client: ITransportClient, runner: Runner = None):
+    def construct(self, client: ITransportClient,
+                  runner: Optional[Runner] = None):
         raise NotImplementedError
 
-    def build(self, client: ITransportClient, runner: Runner = None):
+    def build(self, client: ITransportClient,
+              runner: Optional[Runner] = None):
         return self.construct(client, runner or self.runner)
 
 
 class Transport(ITransport, AbstractConnection, Actor):
-
-    def __init__(self, transport_builder: ITransportBuilder, client, runner=None):
+    def __init__(self, transport_builder: ITransportBuilder,
+                 client: ITransportClient,
+                 runner: Optional[Runner] = None):
         Actor.__init__(self, runner=runner)
         client = Transport.Client(self, client)
         AbstractConnection.__init__(self, client)
         self._client = client
-        self._impl: ITransport = transport_builder.build(self._client, runner=runner)
+        self._impl: ITransport = transport_builder.build(
+            self._client, runner=runner)
         self._been_connected = False
         self.pending_packets: List[Transport.OutgoingPacket] = []
         self.error_count = 0
 
     @property
-    def state(self):
+    def state(self) -> ConnectionState:
         return self._impl.state
 
     @property
@@ -104,7 +107,8 @@ class Transport(ITransport, AbstractConnection, Actor):
         return self._impl.supports_reconnecting
 
     def send(self, packet: bytes) -> IOutgoingPacket:
-        logging.debug(f"send(): Enqueueing packet for sending pending={len(self.pending_packets)}")
+        count = len(self.pending_packets)
+        logging.debug(f"send(): Enqueueing packet for sending pending={count}")
         outgoing = Transport.OutgoingPacket(self, packet)
         self.pending_packets.append(outgoing)
 
@@ -118,7 +122,8 @@ class Transport(ITransport, AbstractConnection, Actor):
         logging.debug("reconnect():")
         if self._been_connected and not self.supports_reconnecting:
             # TODO(bgrzesik): some how remove this object
-            logging.warning("reconnect(): This transport does not support reconnecting")
+            logging.warning(
+                "reconnect(): This transport does not support reconnecting")
             self.disconnect()
             return
 
@@ -148,7 +153,6 @@ class Transport(ITransport, AbstractConnection, Actor):
 
         elif state == ConnectionState.DISCONNECTING:
             self.transport_task(timeout=RECONNECT_TIMEOUT)
-
         elif state == ConnectionState.DISCONNECTED:
             self.error_count += 1
             if self.error_count < MAX_ERROR_COUNT:
@@ -166,7 +170,8 @@ class Transport(ITransport, AbstractConnection, Actor):
 
     @Actor.assert_executor()
     def pump_pending_packets(self):
-        logging.debug(f"pump_pending_packets(): pending_count={len(self.pending_packets)}")
+        logging.debug("pump_pending_packets(): "
+                      f"pending_count={len(self.pending_packets)}")
         if not self.pending_packets:
             return
 
@@ -174,7 +179,8 @@ class Transport(ITransport, AbstractConnection, Actor):
         if outgoing.pending:
             return
 
-        logging.debug("pump_pending_packets(): Sending packet and marking as pending")
+        logging.debug(
+            "pump_pending_packets(): Sending packet and marking as pending")
         outgoing.pending = True
         impl_outgoing = self._impl.send(outgoing.packet)
         outgoing.set_outgoing_packet(impl_outgoing)
@@ -185,6 +191,7 @@ class Transport(ITransport, AbstractConnection, Actor):
             self._transport: Transport = transport
             self.pending = False
             self._impl: Optional[IOutgoingPacket] = None
+            # TODO(bgrzesik): Replace this with `self._.impl.future is future`
             self._last_marker: Optional[object] = None
 
         def set_outgoing_packet(self, impl: IOutgoingPacket):
@@ -193,7 +200,8 @@ class Transport(ITransport, AbstractConnection, Actor):
             self._last_marker = object()
             logging.debug(f"set_outgoing_packet(): marker={self._last_marker}")
             self._impl = impl
-            done_cb = functools.partial(self.on_impl_future_done, self._last_marker)
+            done_cb = functools.partial(
+                self.on_impl_future_done, self._last_marker)
             self._impl.future.add_done_callback(done_cb)
 
         def on_impl_future_done(self, marker: object, future: Future):
@@ -204,6 +212,8 @@ class Transport(ITransport, AbstractConnection, Actor):
                 logging.debug("on_impl_future_done(): Stale marker")
                 return
 
+            assert self._impl is not None
+
             exception = self._impl.future.exception()
             if not exception:
                 logging.debug("on_impl_future_done(): Packet delivered")
@@ -212,12 +222,16 @@ class Transport(ITransport, AbstractConnection, Actor):
                 self.future.set_result(self._impl.future.result())
                 self._transport.transport_task()
             else:
-                logging.error("on_impl_future_done(): Packet failed to deliver", exc_info=exception)
+                logging.error(
+                    "on_impl_future_done(): Packet failed to deliver",
+                    exc_info=exception,
+                )
                 self._transport.error_count += 1
                 self.pending = False
                 self._transport.transport_task()
                 if self._transport.error_count > MAX_ERROR_COUNT:
-                    logging.error("on_impl_future_done() giving up on sending packet")
+                    logging.error(
+                        "on_impl_future_done() giving up on sending packet")
                     self._transport.pending_packets.pop(0)
                     self.future.set_exception(exception)
 
@@ -236,7 +250,9 @@ class Transport(ITransport, AbstractConnection, Actor):
         def on_state_changed(self, state: ConnectionState):
             self.transport.assert_executor()
             if self.last_state == state:
-                logging.debug(f"on_state_changed(): Discarding on_state_changed {state}")
+                logging.debug(
+                    f"on_state_changed(): Discarding on_state_changed {state}"
+                )
                 return
 
             self.last_state = state
@@ -257,7 +273,8 @@ class Transport(ITransport, AbstractConnection, Actor):
         def set_transport(self, transport):
             self._transport = transport
 
-        def construct(self, client: ITransportClient, runner: Runner = None):
+        def construct(self, client: ITransportClient,
+                      runner: Optional[Runner] = None):
             return Transport(self._transport, client, runner)
 
 
@@ -289,7 +306,7 @@ class StreamingTransport(ITransport, AbstractConnection, ABC):
     def do_disconnect(self) -> bool:
         raise NotImplementedError
 
-    def wait(self, write: bool) -> (bool, bool, bool):
+    def wait(self, write: bool) -> Tuple[bool, bool, bool]:
         raise NotImplementedError
 
     def notify(self):
@@ -308,8 +325,7 @@ class StreamingTransport(ITransport, AbstractConnection, ABC):
             logging.debug(f"_read(): Decoded frame size={len(frame)}")
             self._client.on_packet_received(bytes(frame))
         else:
-            logging.debug(f"_read(): Failed to decode")
-
+            logging.debug("_read(): Failed to decode")
 
     def _write(self):
         def wrapped_output(arr):
@@ -328,12 +344,14 @@ class StreamingTransport(ITransport, AbstractConnection, ABC):
         logging.debug("_write(): Wrote packet")
 
     def _io_thread(self):
-        logging.debug(f"_io_thread(): thread={threading.current_thread()} self={self}")
+        logging.debug(
+            f"_io_thread(): thread={threading.current_thread()} self={self}")
         while self._running:
             poll_write = len(self._output_queue) != 0
             logging.debug(f"_io_thread(): poll_write = {poll_write}")
             read, write, hup = self.wait(poll_write)
-            logging.debug(f"_io_thread(): read = {read}, write = {write}, hup={hup}, running = {self._running}")
+            logging.debug(f"_io_thread(): read = {read}, write = {write}, "
+                          f"hup={hup}, running = {self._running}")
 
             if not self._running or hup:
                 if hup:
@@ -353,7 +371,7 @@ class StreamingTransport(ITransport, AbstractConnection, ABC):
                 logging.error("_io_thread(): ", exc_info=exc)
                 self._client.on_error()
 
-        logging.debug(f"_io_thread(): Exited")
+        logging.debug("_io_thread(): Exited")
 
     @property
     def is_connected(self) -> bool:
@@ -390,7 +408,9 @@ class StreamingTransport(ITransport, AbstractConnection, ABC):
                 return
 
         self._running = True
-        self._thread = threading.Thread(target=self._io_thread, name="Streaming IO thread")
+        self._thread = threading.Thread(
+            target=self._io_thread, name="Streaming IO thread"
+        )
         self._thread.daemon = True
         self._thread.start()
 
@@ -430,7 +450,6 @@ class StreamingTransport(ITransport, AbstractConnection, ABC):
 
 
 class SocketTransport(StreamingTransport):
-
     def __init__(self, sock, addr, client):
         self._sock: socket.socket = sock
         self._addr = addr
@@ -462,7 +481,8 @@ class SocketTransport(StreamingTransport):
         logging.debug("do_disconnect():")
         if self._poll is not None:
             self._poll.unregister(self._sock)
-            self._poll.unregister(self._event)
+            if self._event is not None:
+                self._poll.unregister(self._event)
             self._poll = None
 
         if self._notify is not None:
@@ -475,12 +495,14 @@ class SocketTransport(StreamingTransport):
 
         return True
 
-    def wait(self, write: bool) -> (bool, bool, bool):
+    def wait(self, write: bool) -> Tuple[bool, bool, bool]:
         logging.debug(f"wait(): write = {write} event={self._event}")
 
         mask = select.POLLIN | select.POLLHUP
         if write:
             mask = mask | select.POLLOUT
+
+        assert self._poll
 
         self._poll.modify(self._sock.fileno(), mask)
         fds = self._poll.poll()
@@ -509,7 +531,8 @@ class SocketTransport(StreamingTransport):
                 if (event & select.POLLERR) == select.POLLERR:
                     has_hup = True
 
-        logging.debug(f"wait(): read={has_read} write={has_write} hup={has_hup}")
+        logging.debug(
+            f"wait(): read={has_read} write={has_write} hup={has_hup}")
         return has_read, has_write, has_hup
 
     def notify(self):
@@ -529,7 +552,6 @@ class SocketTransport(StreamingTransport):
         self._sock.close()
 
     class Builder(ITransportBuilder):
-
         def __init__(self, socket=None, addr=None, runner=None):
             super().__init__(runner=runner)
             self._socket = socket
@@ -543,5 +565,6 @@ class SocketTransport(StreamingTransport):
             self._addr = addr
             return self
 
-        def construct(self, client: ITransportClient, runner: Runner = None):
+        def construct(self, client: ITransportClient,
+                      runner: Optional[Runner] = None):
             return SocketTransport(self._socket, self._addr, client)

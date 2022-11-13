@@ -15,11 +15,10 @@ from server.comm.transport.transport import ITransportBuilder
 
 
 class Client(IListenerClient, ISessionClient):
-
     def on_request(self, request: GenericMessage) -> Future[GenericMessage]:
         logging.debug(f"on_request(): {request}")
 
-        future = Future()
+        future: Future = Future()
         future.set_result(GenericMessage(ok=EmptyProto()))
 
         return future
@@ -31,15 +30,15 @@ class Client(IListenerClient, ISessionClient):
         logging.info("on_connect():")
 
         session = Session.Builder(
-                messenger=Messenger.Builder(
-                        messenger=ProtocolMessenger.Builder(
-                                transport=transport_builder
-                        )
-                )
-        ).construct(self)
+            messenger=Messenger.Builder(
+                messenger=ProtocolMessenger.Builder(
+                    transport=transport_builder)
+            )
+        ).build(self)
 
-        session.request(GenericMessage(test=TestMessage(value="Test 123"))).add_done_callback(
-            lambda res: logging.debug(f"response {res}"))
+        session.request(
+            GenericMessage(test=TestMessage(value="Test 123"))
+        ).add_done_callback(lambda res: logging.debug(f"response {res}"))
         session.reconnect()
 
 
@@ -56,6 +55,8 @@ def main():
 if __name__ == "__main__":
     import sys
 
-    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG,
-                        format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s')
+    logging.basicConfig(stream=sys.stdout,
+                        level=logging.DEBUG,
+                        format="%(asctime)s,%(msecs)d %(levelname)-8s "
+                        "[%(filename)s:%(lineno)d] %(message)s")
     main()
