@@ -1,3 +1,4 @@
 Pillow~=9.2.0
 pexpect~=4.8.0
 protobuf~=4.21.9
+git+https://github.com/pybluez/pybluez.git@37d7888#egg=pybluez; sys_platform == 'linux'
