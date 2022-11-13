@@ -1,45 +1,61 @@
 import logging
 import threading
+from typing import List
 from concurrent.futures import Future
 
-from google.protobuf.empty_pb2 import Empty as EmptyProto
-
-from server.comm.connection import ConnectionState
+from server.comm import protocol
+from server.comm.app import RequestRouter
+from server.comm.connection import IConnectionClient
 from server.comm.listener.listener import IListenerClient
 from server.comm.listener.net import NetworkListener
 from server.comm.presentation.messenger import Messenger
 from server.comm.presentation.protocol_messenger import ProtocolMessenger
-from server.comm.presentation.protocol_pb2 import GenericMessage, TestMessage
-from server.comm.session.session import ISessionClient, Session
 from server.comm.transport.transport import ITransportBuilder
+from server.comm.session.session import Session
 
 
-class Client(IListenerClient, ISessionClient):
-    def on_request(self, request: GenericMessage) -> Future[GenericMessage]:
-        logging.debug(f"on_request(): {request}")
+class GetBoardsResponder(protocol.OnGetBoards):
 
-        future: Future = Future()
-        future.set_result(GenericMessage(ok=EmptyProto()))
-
+    def on_request(self, request) -> Future[protocol.Boards]:
+        future: Future[protocol.Boards] = Future()
+        future.set_result(protocol.Boards(
+            boards=["test 0", "test 1"]
+        ))
         return future
 
-    def on_state_changed(self, state: ConnectionState):
-        logging.info(f"on_state_changed() state={state}")
+
+class MobileClient(IConnectionClient):
+
+    def __init__(self, transport: ITransportBuilder):
+        self._router = RequestRouter(
+            GetBoardsResponder(),
+            client=self
+        )
+
+        self._session = Session.Builder(
+            messenger=Messenger.Builder(
+                messenger=ProtocolMessenger.Builder(
+                    transport=transport)
+            )
+        ).build(self._router)
+
+        self._session.reconnect()
+
+    def on_error(self):
+        pass
+
+    def on_state_changed(self, state):
+        logging.info(f"on_state_changed(): {state}")
+
+
+class Client(IListenerClient):
+
+    def __init__(self):
+        self._clients: List[MobileClient] = []
 
     def on_connect(self, transport_builder: ITransportBuilder):
         logging.info("on_connect():")
-
-        session = Session.Builder(
-            messenger=Messenger.Builder(
-                messenger=ProtocolMessenger.Builder(
-                    transport=transport_builder)
-            )
-        ).build(self)
-
-        session.request(
-            GenericMessage(test=TestMessage(value="Test 123"))
-        ).add_done_callback(lambda res: logging.debug(f"response {res}"))
-        session.reconnect()
+        self._clients.append(MobileClient(transport_builder))
 
 
 def main():
