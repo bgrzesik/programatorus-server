@@ -1,10 +1,8 @@
-import os
-import select
 import logging
 import socket
+import functools
+import threading
 import subprocess
-from enum import Enum
-from typing import Optional
 from concurrent.futures import Future
 from abc import ABC, abstractmethod
 
@@ -13,19 +11,57 @@ import bluetooth as bt
 from server.actor import Actor
 from server.comm.listener.listener import SocketListener
 
+import dbus
+import dbus.service
+import dbus.mainloop.glib
 
-class PairingState(Enum):
-    INACTIVE = 0
-    AGENT_SETUP = 1
-    AWAITING_CONNECTION = 2
-    AWAITING_INPUT = 3
+
+class _Agent(dbus.service.Object):
+    BUS_NAME = 'org.bluez'
+    AGENT_INTERFACE = 'org.bluez.Agent1'
+    AGENT_PATH = "/test/programatorus"
+
+    def __init__(self, mainloop, on_pair):
+        dbus.service.Object.__init__(self, dbus.SystemBus(),
+                                     _Agent.AGENT_PATH)
+        self._mainloop = mainloop
+        self._on_pair = on_pair
+
+    def set_trusted(self, path):
+        props = dbus.Interface(self.bus.get_object("org.bluez", path),
+                               "org.freedesktop.DBus.Properties")
+        logging.debug(f"set_trusted(): Trusing {path}")
+        props.Set("org.bluez.Device1", "Trusted", True)
+
+    @dbus.service.method(AGENT_INTERFACE,
+                         in_signature="", out_signature="")
+    def Release(self):
+        print("Release")
+        self._mainloop.quit()
+
+    @dbus.service.method(AGENT_INTERFACE,
+                         in_signature="o", out_signature="s")
+    def RequestPinCode(self, device):
+        print("RequestPinCode (%s)" % (device))
+        self.set_trusted(device)
+        return "000000"
+
+    @dbus.service.method(AGENT_INTERFACE,
+                         in_signature="ou", out_signature="")
+    def RequestConfirmation(self, device, passkey):
+        class Rejected(dbus.DBusException):
+            _dbus_error_name = "org.bluez.Error.Rejected"
+
+        logging.debug(f"RequestConfirmation(): device={device} path={passkey}")
+        self._on_pair(device, passkey)
+
+    @dbus.service.method(AGENT_INTERFACE,
+                         in_signature="", out_signature="")
+    def Cancel(self):
+        print("Cancel")
 
 
 class PairingClient(ABC):
-
-    @abstractmethod
-    def on_state_changed(self, state: PairingState):
-        raise NotImplementedError
 
     @abstractmethod
     def confirm_pin(self, pin: str) -> Future[bool]:
@@ -36,110 +72,39 @@ class PairingAgent(Actor):
 
     def __init__(self, client: PairingClient):
         super().__init__()
+
+        from gi.repository import GLib
+        dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+        dbus.mainloop.glib.threads_init()
+        bus = dbus.SystemBus()
+
+        self.mainloop = GLib.MainLoop()
+        self._agent = _Agent(self.mainloop, self._on_pair)
+
+        obj = bus.get_object(_Agent.BUS_NAME, "/org/bluez")
+        inf = dbus.Interface(obj, "org.bluez.AgentManager1")
+        inf.RegisterAgent(_Agent.AGENT_PATH, "DisplayYesNo")
+
+        inf.RequestDefaultAgent(_Agent.AGENT_PATH)
+
         self._client = client
-        self._state = PairingState.INACTIVE
-        self._client.on_state_changed(PairingState.INACTIVE)
-        self._proc: Optional[subprocess.Popen] = None
+        self._thread = threading.Thread(target=self.mainloop.run)
+        self._thread.start()
 
-        self._event, self._notify = os.pipe()
-        os.set_blocking(self._event, False)
-
-    @property
-    def state(self) -> PairingState:
-        return self._state
-
-    def _set_state(self, state):
-        self._state = state
-        self._client.on_state_changed(state)
-
-    def cancel(self):
-        logging.debug("cancel():")
-        os.write(self._notify, b"\0")
-
-    def drain_event(self):
-        try:
-            while os.read(self._event, 1):
-                pass
-        except BlockingIOError:
-            pass
-
-    @Actor.handler(guarded=True)
     def pair(self):
-        try:
-            self._set_state(PairingState.AGENT_SETUP)
-            logging.debug("pair(): Setting up agent")
+        pass
 
-            subprocess.run(["bluetoothctl", "discoverable", "on"])
-            self.drain_event()
+    @Actor.handler()
+    def _on_pair(self, device, pin):
+        logging.debug("_on_pair()")
+        self._client.confirm_pin(pin) \
+            .add_done_callback(functools.partial(self._trust, device))
 
-            with subprocess.Popen("bluetoothctl",
-                                  stdout=subprocess.PIPE,
-                                  stdin=subprocess.PIPE) as proc:
-                self._proc = proc
-                self._canceled = False
-
-                assert proc.stdin and proc.stdout
-                lines = [
-                    b"discoverable on\n",
-                    b"agent off\n",
-                    b"agent DisplayYesNo\n",
-                    b"default-agent\n",
-                ]
-                for line in lines:
-                    proc.stdin.write(line)
-
-                self._set_state(PairingState.AWAITING_CONNECTION)
-                logging.debug("pair(): Awaiting connection")
-
-                pin = None
-                buf = []
-                while pin is None:
-                    read, [], [] = select.select([self._event, proc.stdout],
-                                                 [], [])
-
-                    if self._event in read:
-                        self.drain_event()
-                        return
-                    elif proc.stdout not in read:
-                        continue
-
-                    buf.append(chr(proc.stdout.read(1)[0]))
-                    if len(buf) > len("passkey 000000 (yes/no):"):
-                        buf.pop(0)
-
-                    if "".join(buf).endswith("(yes/no):"):
-                        pin = "".join(buf[len("passkey "):-len(" (yes/no):")])
-                        break
-
-                    if self._canceled:
-                        return
-
-                self._set_state(PairingState.AWAITING_INPUT)
-                logging.info(f"pair(): pin={pin}")
-
-                if pin and self._client.confirm_pin(pin).result():
-                    proc.stdin.write(b"yes\ntrust\n")
-                else:
-                    proc.stdin.write(b"no\n")
-
-                self._set_state(PairingState.INACTIVE)
-
-        except Exception as exc:
-            logging.error("", exc_info=exc)
-            raise
-        finally:
-            self._proc = proc
-            self._canceled = False
-            try:
-                subprocess.run(["bluetoothctl", "pairable", "off"])
-                subprocess.run(["bluetoothctl", "discoverable", "off"])
-                logging.debug("pair(): Disabled discoverability")
-            except Exception as exc:
-                logging.error("", exc_info=exc)
-                raise
-            finally:
-                if self._state != PairingState.INACTIVE:
-                    self._set_state(PairingState.INACTIVE)
+    @Actor.handler()
+    def _trust(self, device, fut):
+        logging.debug("_trust()")
+        if fut.result():
+            self._agent.set_trusted(device)
 
 
 class BluetoothListener(SocketListener, Actor):
