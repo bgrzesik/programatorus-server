@@ -1,6 +1,6 @@
 from concurrent.futures import Future
 
-from server.comm.listener.bt import PairingAgent, PairingClient, PairingState
+from server.comm.listener.bt import PairingAgent, PairingClient
 from server.ui.menu import MenuItem, FONT
 
 
@@ -10,23 +10,20 @@ class PairDialog(MenuItem, PairingClient):
         self.height = 16
         self.width = 96
         self._agent = PairingAgent(self)
-        self._pin = "000000"
+        self._pin = None
         self._future: Future[bool] = Future()
+        self.text = "Connect now"
 
     def on_state_changed(self, state):
-        if state == PairingState.INACTIVE:
-            self.text = "Enabling pairing"
-        elif state == PairingState.AGENT_SETUP:
-            self.text = "Please wait..."
-        elif state == PairingState.AWAITING_CONNECTION:
-            self.text = "Connect now"
-        elif state == PairingState.AWAITING_INPUT:
+        if self._pin is not None:
             self.text = f"Pin: {self._pin}"
+        else:
+            self.text = "Connect now"
 
     def confirm_pin(self, pin) -> Future[bool]:
         self._future = Future()
         self._pin = pin
-        self.on_state_changed(PairingState.AWAITING_INPUT)
+        self.text = f"Pin: {self._pin}"
         return self._future
 
     @property
@@ -34,12 +31,12 @@ class PairDialog(MenuItem, PairingClient):
         return self.text + "\n" + "YES [OK]    NO [<-]"
 
     def on_click(self, select=True):
-        if self._agent.state == PairingState.INACTIVE:
-            self._agent.pair()
-        elif self._agent.state == PairingState.AWAITING_CONNECTION:
-            self._agent.cancel()
-        elif self._agent.state == PairingState.AWAITING_INPUT:
+        if self._pin is None:
+            pass
+        else:
             self._future.set_result(select)
+            self._pin = None
+            self.text = "Connect now"
 
     def draw(self, draw, x, y):
         if self.is_selected:
