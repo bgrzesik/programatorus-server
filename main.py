@@ -22,6 +22,7 @@ from server.comm.presentation.messenger import Messenger
 from server.comm.presentation.protocol_messenger import ProtocolMessenger
 from server.comm.transport.transport import ITransportBuilder
 from server.comm.session.session import Session
+from server.files.handler import FileStore, FileUploadHandler
 
 
 class TimeMenuItem(MenuItem):
@@ -91,9 +92,10 @@ class GetBoardsResponder(protocol.OnGetBoards):
 
 class MobileClient(IConnectionClient):
 
-    def __init__(self, transport: ITransportBuilder):
+    def __init__(self, transport: ITransportBuilder, file_store: FileStore):
         self._router = RequestRouter(
             GetBoardsResponder(),
+            FileUploadHandler(file_store),
             client=self
         )
 
@@ -117,10 +119,11 @@ class ListenerClient(IListenerClient):
 
     def __init__(self):
         self._clients: List[MobileClient] = []
+        self._file_store = FileStore()
 
     def on_connect(self, transport_builder: ITransportBuilder):
         logging.info("on_connect():")
-        self._clients.append(MobileClient(transport_builder))
+        self._clients.append(MobileClient(transport_builder, self._file_store))
 
 
 def main():

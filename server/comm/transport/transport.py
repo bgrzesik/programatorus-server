@@ -284,7 +284,6 @@ class Transport(ITransport, AbstractConnection, Actor):
 
 
 class StreamingTransport(ITransport, AbstractConnection, ABC):
-    MAX_SIZE = 1024
 
     def __init__(self, client, parent=None, executor=None):
         super().__init__(client)
