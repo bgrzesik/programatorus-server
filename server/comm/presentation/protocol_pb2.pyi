@@ -29,10 +29,57 @@ class ErrorMessage(_message.Message):
     description: str
     def __init__(self, description: _Optional[str] = ...) -> None: ...
 
+class FileUpload(_message.Message):
+    __slots__ = ["finish", "part", "result", "start", "uid"]
+    class FileType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = []
+    class Result(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = []
+    class Finish(_message.Message):
+        __slots__ = ["checksum"]
+        CHECKSUM_FIELD_NUMBER: _ClassVar[int]
+        checksum: bytes
+        def __init__(self, checksum: _Optional[bytes] = ...) -> None: ...
+    class Part(_message.Message):
+        __slots__ = ["chunk", "partNo"]
+        CHUNK_FIELD_NUMBER: _ClassVar[int]
+        PARTNO_FIELD_NUMBER: _ClassVar[int]
+        chunk: bytes
+        partNo: int
+        def __init__(self, partNo: _Optional[int] = ..., chunk: _Optional[bytes] = ...) -> None: ...
+    class Start(_message.Message):
+        __slots__ = ["chunks", "name", "size", "type"]
+        CHUNKS_FIELD_NUMBER: _ClassVar[int]
+        NAME_FIELD_NUMBER: _ClassVar[int]
+        SIZE_FIELD_NUMBER: _ClassVar[int]
+        TYPE_FIELD_NUMBER: _ClassVar[int]
+        chunks: int
+        name: str
+        size: int
+        type: FileUpload.FileType
+        def __init__(self, name: _Optional[str] = ..., size: _Optional[int] = ..., chunks: _Optional[int] = ..., type: _Optional[_Union[FileUpload.FileType, str]] = ...) -> None: ...
+    ALREADY_EXISTS: FileUpload.Result
+    FINISH_FIELD_NUMBER: _ClassVar[int]
+    FIRMWARE: FileUpload.FileType
+    INVALID_CHECKSUM: FileUpload.Result
+    IO_ERROR: FileUpload.Result
+    OK: FileUpload.Result
+    PART_FIELD_NUMBER: _ClassVar[int]
+    RESULT_FIELD_NUMBER: _ClassVar[int]
+    START_FIELD_NUMBER: _ClassVar[int]
+    UID_FIELD_NUMBER: _ClassVar[int]
+    finish: FileUpload.Finish
+    part: FileUpload.Part
+    result: FileUpload.Result
+    start: FileUpload.Start
+    uid: int
+    def __init__(self, uid: _Optional[int] = ..., start: _Optional[_Union[FileUpload.Start, _Mapping]] = ..., part: _Optional[_Union[FileUpload.Part, _Mapping]] = ..., finish: _Optional[_Union[FileUpload.Finish, _Mapping]] = ..., result: _Optional[_Union[FileUpload.Result, str]] = ...) -> None: ...
+
 class GenericMessage(_message.Message):
-    __slots__ = ["deviceUpdateStatus", "error", "getBoardsRequest", "getBoardsResponse", "heartbeat", "ok", "request", "response", "sessionId", "setSessionId", "test"]
+    __slots__ = ["deviceUpdateStatus", "error", "fileUpload", "getBoardsRequest", "getBoardsResponse", "heartbeat", "ok", "request", "response", "sessionId", "setSessionId", "test"]
     DEVICEUPDATESTATUS_FIELD_NUMBER: _ClassVar[int]
     ERROR_FIELD_NUMBER: _ClassVar[int]
+    FILEUPLOAD_FIELD_NUMBER: _ClassVar[int]
     GETBOARDSREQUEST_FIELD_NUMBER: _ClassVar[int]
     GETBOARDSRESPONSE_FIELD_NUMBER: _ClassVar[int]
     HEARTBEAT_FIELD_NUMBER: _ClassVar[int]
@@ -44,6 +91,7 @@ class GenericMessage(_message.Message):
     TEST_FIELD_NUMBER: _ClassVar[int]
     deviceUpdateStatus: DeviceUpdateStatus
     error: ErrorMessage
+    fileUpload: FileUpload
     getBoardsRequest: GetBoardsRequest
     getBoardsResponse: GetBoardsResponse
     heartbeat: _empty_pb2.Empty
@@ -53,7 +101,7 @@ class GenericMessage(_message.Message):
     sessionId: int
     setSessionId: SetSessionId
     test: TestMessage
-    def __init__(self, sessionId: _Optional[int] = ..., request: _Optional[int] = ..., response: _Optional[int] = ..., setSessionId: _Optional[_Union[SetSessionId, _Mapping]] = ..., heartbeat: _Optional[_Union[_empty_pb2.Empty, _Mapping]] = ..., ok: _Optional[_Union[_empty_pb2.Empty, _Mapping]] = ..., getBoardsRequest: _Optional[_Union[GetBoardsRequest, _Mapping]] = ..., getBoardsResponse: _Optional[_Union[GetBoardsResponse, _Mapping]] = ..., deviceUpdateStatus: _Optional[_Union[DeviceUpdateStatus, _Mapping]] = ..., test: _Optional[_Union[TestMessage, _Mapping]] = ..., error: _Optional[_Union[ErrorMessage, _Mapping]] = ...) -> None: ...
+    def __init__(self, sessionId: _Optional[int] = ..., request: _Optional[int] = ..., response: _Optional[int] = ..., setSessionId: _Optional[_Union[SetSessionId, _Mapping]] = ..., heartbeat: _Optional[_Union[_empty_pb2.Empty, _Mapping]] = ..., ok: _Optional[_Union[_empty_pb2.Empty, _Mapping]] = ..., getBoardsRequest: _Optional[_Union[GetBoardsRequest, _Mapping]] = ..., getBoardsResponse: _Optional[_Union[GetBoardsResponse, _Mapping]] = ..., deviceUpdateStatus: _Optional[_Union[DeviceUpdateStatus, _Mapping]] = ..., fileUpload: _Optional[_Union[FileUpload, _Mapping]] = ..., test: _Optional[_Union[TestMessage, _Mapping]] = ..., error: _Optional[_Union[ErrorMessage, _Mapping]] = ...) -> None: ...
 
 class GetBoardsRequest(_message.Message):
     __slots__ = []
