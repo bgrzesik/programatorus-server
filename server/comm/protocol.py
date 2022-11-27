@@ -9,8 +9,14 @@ from server.comm.presentation.protocol_pb2 import (
 
 
 @dataclass
+class Board(object):
+    name: str
+    favourite: bool
+
+
+@dataclass
 class Boards(object):
-    boards: List[str] = field(default_factory=list)
+    boards: List[Board] = field(default_factory=list)
 
 
 class OnGetBoards(IResponder[None, Boards]):
@@ -25,7 +31,9 @@ class OnGetBoards(IResponder[None, Boards]):
     def prepare_response(self, response: Boards) -> GenericMessage:
         return GenericMessage(
             getBoardsResponse=GetBoardsResponse(
-                name=response.boards
+                board=[GetBoardsResponse.Board(name=b.name,
+                                               favourite=b.favourite)
+                       for b in response.boards]
             )
         )
 

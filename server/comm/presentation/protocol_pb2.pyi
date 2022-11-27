@@ -60,10 +60,17 @@ class GetBoardsRequest(_message.Message):
     def __init__(self) -> None: ...
 
 class GetBoardsResponse(_message.Message):
-    __slots__ = ["name"]
-    NAME_FIELD_NUMBER: _ClassVar[int]
-    name: _containers.RepeatedScalarFieldContainer[str]
-    def __init__(self, name: _Optional[_Iterable[str]] = ...) -> None: ...
+    __slots__ = ["board"]
+    class Board(_message.Message):
+        __slots__ = ["favourite", "name"]
+        FAVOURITE_FIELD_NUMBER: _ClassVar[int]
+        NAME_FIELD_NUMBER: _ClassVar[int]
+        favourite: bool
+        name: str
+        def __init__(self, name: _Optional[str] = ..., favourite: bool = ...) -> None: ...
+    BOARD_FIELD_NUMBER: _ClassVar[int]
+    board: _containers.RepeatedCompositeFieldContainer[GetBoardsResponse.Board]
+    def __init__(self, board: _Optional[_Iterable[_Union[GetBoardsResponse.Board, _Mapping]]] = ...) -> None: ...
 
 class SetSessionId(_message.Message):
     __slots__ = ["sessionId"]

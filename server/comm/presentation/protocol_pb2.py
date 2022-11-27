@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0eprotocol.proto\x12\x0fprogramus.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x1c\n\x0bTestMessage\x12\r\n\x05value\x18\x01 \x01(\t\"#\n\x0c\x45rrorMessage\x12\x13\n\x0b\x64\x65scription\x18\x01 \x01(\t\"!\n\x0cSetSessionId\x12\x11\n\tsessionId\x18\x01 \x01(\x04\"\x12\n\x10GetBoardsRequest\"!\n\x11GetBoardsResponse\x12\x0c\n\x04name\x18\x01 \x03(\t\"\xe1\x01\n\x12\x44\x65viceUpdateStatus\x12:\n\x06status\x18\x01 \x01(\x0e\x32*.programus.proto.DeviceUpdateStatus.Status\x12\x1d\n\x10\x66lashingProgress\x18\x02 \x01(\x02H\x00\x88\x01\x01\x12\x12\n\x05image\x18\x03 \x01(\tH\x01\x88\x01\x01\"=\n\x06Status\x12\x0f\n\x0bUNREACHABLE\x10\x00\x12\t\n\x05READY\x10\x01\x12\x0c\n\x08\x46LASHING\x10\x02\x12\t\n\x05\x45RROR\x10\x03\x42\x13\n\x11_flashingProgressB\x08\n\x06_image\"\x8b\x04\n\x0eGenericMessage\x12\x11\n\tsessionId\x18\x01 \x01(\x04\x12\x11\n\x07request\x18\x02 \x01(\x04H\x00\x12\x12\n\x08response\x18\x03 \x01(\x04H\x00\x12\x35\n\x0csetSessionId\x18\x64 \x01(\x0b\x32\x1d.programus.proto.SetSessionIdH\x01\x12+\n\theartbeat\x18\x65 \x01(\x0b\x32\x16.google.protobuf.EmptyH\x01\x12$\n\x02ok\x18\x66 \x01(\x0b\x32\x16.google.protobuf.EmptyH\x01\x12>\n\x10getBoardsRequest\x18\xc8\x01 \x01(\x0b\x32!.programus.proto.GetBoardsRequestH\x01\x12@\n\x11getBoardsResponse\x18\xc9\x01 \x01(\x0b\x32\".programus.proto.GetBoardsResponseH\x01\x12\x42\n\x12\x64\x65viceUpdateStatus\x18\xca\x01 \x01(\x0b\x32#.programus.proto.DeviceUpdateStatusH\x01\x12-\n\x04test\x18\xad\x02 \x01(\x0b\x32\x1c.programus.proto.TestMessageH\x01\x12/\n\x05\x65rror\x18\xae\x02 \x01(\x0b\x32\x1d.programus.proto.ErrorMessageH\x01\x42\x04\n\x02idB\t\n\x07payloadb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0eprotocol.proto\x12\x0fprogramus.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x1c\n\x0bTestMessage\x12\r\n\x05value\x18\x01 \x01(\t\"#\n\x0c\x45rrorMessage\x12\x13\n\x0b\x64\x65scription\x18\x01 \x01(\t\"!\n\x0cSetSessionId\x12\x11\n\tsessionId\x18\x01 \x01(\x04\"\x12\n\x10GetBoardsRequest\"v\n\x11GetBoardsResponse\x12\x37\n\x05\x62oard\x18\x01 \x03(\x0b\x32(.programus.proto.GetBoardsResponse.Board\x1a(\n\x05\x42oard\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x11\n\tfavourite\x18\x02 \x01(\x08\"\xe1\x01\n\x12\x44\x65viceUpdateStatus\x12:\n\x06status\x18\x01 \x01(\x0e\x32*.programus.proto.DeviceUpdateStatus.Status\x12\x1d\n\x10\x66lashingProgress\x18\x02 \x01(\x02H\x00\x88\x01\x01\x12\x12\n\x05image\x18\x03 \x01(\tH\x01\x88\x01\x01\"=\n\x06Status\x12\x0f\n\x0bUNREACHABLE\x10\x00\x12\t\n\x05READY\x10\x01\x12\x0c\n\x08\x46LASHING\x10\x02\x12\t\n\x05\x45RROR\x10\x03\x42\x13\n\x11_flashingProgressB\x08\n\x06_image\"\x8b\x04\n\x0eGenericMessage\x12\x11\n\tsessionId\x18\x01 \x01(\x04\x12\x11\n\x07request\x18\x02 \x01(\x04H\x00\x12\x12\n\x08response\x18\x03 \x01(\x04H\x00\x12\x35\n\x0csetSessionId\x18\x64 \x01(\x0b\x32\x1d.programus.proto.SetSessionIdH\x01\x12+\n\theartbeat\x18\x65 \x01(\x0b\x32\x16.google.protobuf.EmptyH\x01\x12$\n\x02ok\x18\x66 \x01(\x0b\x32\x16.google.protobuf.EmptyH\x01\x12>\n\x10getBoardsRequest\x18\xc8\x01 \x01(\x0b\x32!.programus.proto.GetBoardsRequestH\x01\x12@\n\x11getBoardsResponse\x18\xc9\x01 \x01(\x0b\x32\".programus.proto.GetBoardsResponseH\x01\x12\x42\n\x12\x64\x65viceUpdateStatus\x18\xca\x01 \x01(\x0b\x32#.programus.proto.DeviceUpdateStatusH\x01\x12-\n\x04test\x18\xad\x02 \x01(\x0b\x32\x1c.programus.proto.TestMessageH\x01\x12/\n\x05\x65rror\x18\xae\x02 \x01(\x0b\x32\x1d.programus.proto.ErrorMessageH\x01\x42\x04\n\x02idB\t\n\x07payloadb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'protocol_pb2', globals())
@@ -30,11 +30,13 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _GETBOARDSREQUEST._serialized_start=166
   _GETBOARDSREQUEST._serialized_end=184
   _GETBOARDSRESPONSE._serialized_start=186
-  _GETBOARDSRESPONSE._serialized_end=219
-  _DEVICEUPDATESTATUS._serialized_start=222
-  _DEVICEUPDATESTATUS._serialized_end=447
-  _DEVICEUPDATESTATUS_STATUS._serialized_start=355
-  _DEVICEUPDATESTATUS_STATUS._serialized_end=416
-  _GENERICMESSAGE._serialized_start=450
-  _GENERICMESSAGE._serialized_end=973
+  _GETBOARDSRESPONSE._serialized_end=304
+  _GETBOARDSRESPONSE_BOARD._serialized_start=264
+  _GETBOARDSRESPONSE_BOARD._serialized_end=304
+  _DEVICEUPDATESTATUS._serialized_start=307
+  _DEVICEUPDATESTATUS._serialized_end=532
+  _DEVICEUPDATESTATUS_STATUS._serialized_start=440
+  _DEVICEUPDATESTATUS_STATUS._serialized_end=501
+  _GENERICMESSAGE._serialized_start=535
+  _GENERICMESSAGE._serialized_end=1058
 # @@protoc_insertion_point(module_scope)
