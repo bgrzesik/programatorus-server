@@ -23,7 +23,11 @@ message GetBoardsRequest {
 }
 
 message GetBoardsResponse {
-  repeated string name = 1;
+  message Board {
+    string name = 1;
+    bool favourite = 2;
+  }
+  repeated Board board = 1;
 }
 
 message DeviceUpdateStatus {

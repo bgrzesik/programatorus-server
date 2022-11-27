@@ -81,7 +81,10 @@ class GetBoardsResponder(protocol.OnGetBoards):
     def on_request(self, request) -> Future[protocol.Boards]:
         future: Future[protocol.Boards] = Future()
         future.set_result(protocol.Boards(
-            boards=["test 0", "test 1"]
+            boards=[
+                protocol.Board("Test 1", False),
+                protocol.Board("Test 2", True),
+            ]
         ))
         return future
 
