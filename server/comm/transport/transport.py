@@ -8,15 +8,15 @@ from abc import ABC, abstractmethod
 from concurrent.futures import Future
 from typing import List, Optional, Tuple
 
-from server.actor import Actor, Runner
-from server.comm.connection import (
+from ...actor import Actor, Runner
+from ..connection import (
     IConnection,
     IConnectionClient,
     AbstractConnection,
     ConnectionState,
     IConnectionBuilder,
 )
-from server.comm.transport.frame_coding import FrameDecoder, FrameEncoder
+from .frame_coding import FrameDecoder, FrameEncoder
 
 RECONNECT_TIMEOUT = 2.0  # seconds
 MAX_ERROR_COUNT = 4

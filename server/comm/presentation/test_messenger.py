@@ -3,12 +3,12 @@ import unittest
 from queue import Empty, Queue
 from typing import List
 
-from server.comm.presentation.messenger import IMessageClient, IOutgoingMessage
-from server.comm.presentation.protocol_messenger import ProtocolMessenger
-from server.comm.presentation.protocol_pb2 import GenericMessage, TestMessage
-from server.comm.transport.test_transport import LoopbackTransport
+from .messenger import IMessageClient, IOutgoingMessage
+from .protocol_messenger import ProtocolMessenger
+from .protocol_pb2 import GenericMessage, TestMessage
+from ..transport.test_transport import LoopbackTransport
 
-from server.comm.transport.transport import Transport, ConnectionState
+from ..transport.transport import Transport, ConnectionState
 
 
 class MessageLoopbackTest(unittest.TestCase):

@@ -2,8 +2,8 @@ from enum import IntEnum
 from typing import List, Optional
 from dataclasses import dataclass, field
 
-from server.comm.app import IRequester, IResponder
-from server.comm.presentation import protocol_pb2 as pb
+from .app import IRequester, IResponder
+from .presentation import protocol_pb2 as pb
 
 
 @dataclass

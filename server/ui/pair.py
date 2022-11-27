@@ -1,9 +1,9 @@
 from concurrent.futures import Future
-from server.ui.menu import MenuItem, FONT
+from .menu import MenuItem, FONT
 
 import os
 if os.uname().nodename == "Linux":
-    from server.comm.listener.bt import PairingAgent, PairingClient
+    from ..comm.listener.bt import PairingAgent, PairingClient
 else:
     # Stub
     class PairingClient(object):

@@ -3,8 +3,8 @@ import socket
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from server.actor import Actor
-from server.comm.transport.transport import (
+from ...actor import Actor
+from ..transport.transport import (
     Transport,
     SocketTransport,
     ITransportBuilder,

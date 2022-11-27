@@ -8,8 +8,8 @@ from abc import ABC, abstractmethod
 
 import bluetooth as bt
 
-from server.actor import Actor
-from server.comm.listener.listener import SocketListener
+from ...actor import Actor
+from .listener import SocketListener
 
 import dbus
 import dbus.service

@@ -4,14 +4,14 @@ from abc import ABC, abstractmethod
 from concurrent.futures import Future
 from typing import Optional
 
-from server.actor import Actor, Runner
-from server.comm.connection import (
+from ...actor import Actor, Runner
+from ..connection import (
     IConnection,
     IConnectionClient,
     ConnectionState,
     IConnectionBuilder,
 )
-from server.comm.presentation.protocol_pb2 import GenericMessage
+from .protocol_pb2 import GenericMessage
 
 
 class IOutgoingMessage(ABC):

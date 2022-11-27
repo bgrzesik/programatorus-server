@@ -7,7 +7,7 @@ from queue import Empty, Queue
 from typing import Optional, List
 from concurrent.futures import Future
 
-from server.comm.transport.transport import (
+from .transport import (
     Runner,
     Transport,
     ITransport,

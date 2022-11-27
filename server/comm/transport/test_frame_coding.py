@@ -2,7 +2,7 @@ import unittest
 from typing import List
 
 from random import Random
-from server.comm.transport.frame_coding import FrameEncoder, FrameDecoder
+from .frame_coding import FrameEncoder, FrameDecoder
 
 
 class FrameEncoderTest(unittest.TestCase):
