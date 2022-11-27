@@ -43,6 +43,44 @@ message DeviceUpdateStatus {
   optional string image = 3;
 }
 
+message FileUpload {
+  optional uint64 uid = 1;
+
+  enum FileType {
+    FIRMWARE = 0;
+  }
+
+  message Start {
+    string name = 1;
+    uint64 size = 2;
+    uint32 chunks = 3;
+    FileType type = 4;
+  }
+
+  message Part {
+    uint32 partNo = 1;
+    bytes chunk = 10;
+  }
+
+  message Finish {
+    bytes checksum = 1;
+  }
+
+  enum Result {
+    OK = 0;
+    INVALID_CHECKSUM = 1;
+    IO_ERROR = 2;
+    ALREADY_EXISTS = 3;
+  }
+
+  oneof event {
+    Start start = 100;
+    Part part = 101;
+    Finish finish = 103;
+    Result result = 104;
+  }
+}
+
 message GenericMessage {
   uint64 sessionId = 1;
 
@@ -62,6 +100,8 @@ message GenericMessage {
 
     DeviceUpdateStatus deviceUpdateStatus = 202;
     // Response: Ok(102)
+
+    FileUpload fileUpload = 203;
 
     TestMessage test = 301;
     ErrorMessage error = 302;

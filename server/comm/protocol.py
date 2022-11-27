@@ -1,5 +1,5 @@
 from enum import IntEnum
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from dataclasses import dataclass, field
 
 from .app import IRequester, IResponder
@@ -76,3 +76,88 @@ class UpdateDeviceStatus(IRequester[None]):
 
     def handle_response(self, response: pb.GenericMessage) -> None:
         return None
+
+
+class FileUpload(object):
+
+    @dataclass
+    class Request(object):
+        pass
+
+    @dataclass
+    class Start(Request):
+        name: str
+        size: int
+        chunks: int
+        type_: str
+
+    @dataclass
+    class Part(Request):
+        uid: int
+        part_no: int
+        chunk: bytes
+
+    @dataclass
+    class Finish(Request):
+        uid: int
+        checksum: bytes
+
+    class Result(IntEnum):
+        OK = 0
+        INVALID_CHECKSUM = 1
+        IO_ERROR = 2
+        ALREADY_EXISTS = 3
+
+        def to_proto(self) -> pb.FileUpload.Result:
+            return getattr(pb.FileUpload.Result, self.name)
+
+    Response = Tuple[int, Result]
+
+
+class OnFileUpload(IResponder[FileUpload.Request, FileUpload.Response]):
+
+    @property
+    def request_payload(self) -> str:
+        return "fileUpload"
+
+    def unpack_request(self, request: pb.GenericMessage) -> FileUpload.Request:
+        fileUpload = request.fileUpload
+        event = fileUpload.WhichOneof("event")
+
+        if event == "start":
+            if fileUpload.start.type != \
+                    getattr(pb.FileUpload.FileType, "FIRMWARE"):
+                raise RuntimeError("Unknown file type")
+
+            return FileUpload.Start(
+                name=fileUpload.start.name,
+                size=fileUpload.start.size,
+                chunks=fileUpload.start.chunks,
+                type_="FIRMWARE",
+            )
+        elif event == "part":
+            return FileUpload.Part(
+                uid=fileUpload.uid,
+                part_no=fileUpload.part.partNo,
+                chunk=fileUpload.part.chunk
+            )
+        elif event == "finish":
+            return FileUpload.Finish(
+                uid=fileUpload.uid,
+                checksum=fileUpload.finish.checksum
+            )
+        else:
+            raise RuntimeError("Unknown event type")
+
+    def prepare_response(self,
+                         response: FileUpload.Response) -> pb.GenericMessage:
+
+        uid: int = response[0]
+        result: FileUpload.Result = response[1]
+
+        return pb.GenericMessage(
+            fileUpload=pb.FileUpload(
+                uid=uid,
+                result=result.to_proto()
+            )
+        )
