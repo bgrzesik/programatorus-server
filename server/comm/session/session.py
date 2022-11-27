@@ -162,11 +162,12 @@ class Session(ISession, Actor):
 
         exception = response.exception()
         if exception is not None:
+            logging.error("on_request_done() exception", exc_info=exception)
             message = GenericMessage()
             if self.session_id is not None:
                 message.sessionId = self.session_id
             message.response = request_id
-            message.error = ErrorMessage(description=str(exception))
+            message.error.CopyFrom(ErrorMessage(description=str(exception)))
         else:
             message = GenericMessage()
             message.CopyFrom(response.result())

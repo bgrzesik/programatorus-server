@@ -2,7 +2,7 @@ from concurrent.futures import Future
 from .menu import MenuItem, FONT
 
 import os
-if os.uname().nodename == "Linux":
+if os.uname().sysname == "Linux":
     from ..comm.listener.bt import PairingAgent, PairingClient
 else:
     # Stub
