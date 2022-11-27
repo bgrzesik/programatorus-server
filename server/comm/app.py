@@ -3,9 +3,9 @@ from abc import ABC, abstractmethod
 from concurrent.futures import Future
 from typing import Generic, TypeVar, Optional, Dict
 
-from server.comm.connection import IConnectionClient
-from server.comm.presentation.protocol_pb2 import GenericMessage
-from server.comm.session.session import ISession, ISessionClient
+from .connection import IConnectionClient
+from .presentation.protocol_pb2 import GenericMessage
+from .session.session import ISession, ISessionClient
 
 
 Request = TypeVar("Request")

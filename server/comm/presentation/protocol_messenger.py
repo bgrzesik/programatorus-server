@@ -1,17 +1,17 @@
 import logging
 from concurrent.futures import Future
 
-from server.actor import Runner
-from server.comm.connection import ConnectionState
-from server.comm.presentation.messenger import (
+from ...actor import Runner
+from ..connection import ConnectionState
+from .messenger import (
     IMessenger,
     IMessageClient,
     IOutgoingMessage,
     AbstractOutgoingMessage,
     IMessengerBuilder,
 )
-from server.comm.presentation.protocol_pb2 import GenericMessage
-from server.comm.transport.transport import (
+from .protocol_pb2 import GenericMessage
+from ..transport.transport import (
     ITransport,
     ITransportClient,
     IOutgoingPacket,

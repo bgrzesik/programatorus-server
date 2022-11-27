@@ -1,8 +1,8 @@
 import logging
 import socket
 
-from server.actor import Actor
-from server.comm.listener.listener import SocketListener
+from ...actor import Actor
+from .listener import SocketListener
 
 
 class NetworkListener(SocketListener):

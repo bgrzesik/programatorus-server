@@ -5,7 +5,7 @@ import time
 import unittest
 from queue import Queue, Empty
 
-from server.actor import Actor
+from .actor import Actor
 
 
 class ActorTests(unittest.TestCase):

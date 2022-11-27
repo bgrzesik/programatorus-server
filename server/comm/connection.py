@@ -2,7 +2,7 @@ import enum
 import logging
 from abc import ABC, abstractmethod
 
-from server.actor import Runner
+from ..actor import Runner
 
 
 class ConnectionState(enum.Enum):

@@ -8,20 +8,20 @@ from typing import Optional, List, Dict
 
 from google.protobuf.empty_pb2 import Empty as EmptyProto
 
-from server.actor import Actor, Runner
-from server.comm.connection import (
+from ...actor import Actor, Runner
+from ..connection import (
     IConnection,
     IConnectionClient,
     ConnectionState,
     IConnectionBuilder,
 )
-from server.comm.presentation.messenger import (
+from ..presentation.messenger import (
     IMessenger,
     IMessageClient,
     IOutgoingMessage,
     IMessengerBuilder,
 )
-from server.comm.presentation.protocol_pb2 import GenericMessage, ErrorMessage
+from ..presentation.protocol_pb2 import GenericMessage, ErrorMessage
 
 
 class ISession(IConnection, ABC):

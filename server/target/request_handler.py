@@ -1,7 +1,7 @@
 import time
 from concurrent import futures
 
-from server.target.flash import FlashService
+from .flash import FlashService
 
 
 class RequestHandler(object):
