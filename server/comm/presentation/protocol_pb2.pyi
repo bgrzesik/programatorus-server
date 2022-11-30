@@ -67,16 +67,6 @@ class SetSessionId(google.protobuf.message.Message):
 global___SetSessionId = SetSessionId
 
 @typing_extensions.final
-class GetBoardsRequest(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    def __init__(
-        self,
-    ) -> None: ...
-
-global___GetBoardsRequest = GetBoardsRequest
-
-@typing_extensions.final
 class Board(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -93,6 +83,16 @@ class Board(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["favourite", b"favourite", "name", b"name"]) -> None: ...
 
 global___Board = Board
+
+@typing_extensions.final
+class GetBoardsRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___GetBoardsRequest = GetBoardsRequest
 
 @typing_extensions.final
 class GetBoardsResponse(google.protobuf.message.Message):
@@ -113,16 +113,6 @@ class GetBoardsResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["all", b"all", "favorites", b"favorites"]) -> None: ...
 
 global___GetBoardsResponse = GetBoardsResponse
-
-@typing_extensions.final
-class GetFirmwareRequest(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    def __init__(
-        self,
-    ) -> None: ...
-
-global___GetFirmwareRequest = GetFirmwareRequest
 
 @typing_extensions.final
 class PutBoardsRequest(google.protobuf.message.Message):
@@ -176,6 +166,16 @@ class Firmware(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["favourite", b"favourite", "name", b"name"]) -> None: ...
 
 global___Firmware = Firmware
+
+@typing_extensions.final
+class GetFirmwareRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___GetFirmwareRequest = GetFirmwareRequest
 
 @typing_extensions.final
 class GetFirmwareResponse(google.protobuf.message.Message):
