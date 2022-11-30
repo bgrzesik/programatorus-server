@@ -19,15 +19,50 @@ message SetSessionId {
   uint64 sessionId = 1;
 }
 
+message Board {
+  string name = 1;
+  bool favourite = 2;
+}
+
 message GetBoardsRequest {
 }
 
 message GetBoardsResponse {
-  message Board {
-    string name = 1;
-    bool favourite = 2;
-  }
-  repeated Board board = 1;
+  repeated Board all = 1;
+  repeated Board favorites = 2;
+}
+
+message PutBoardsRequest {
+  repeated Board all = 1;
+  repeated Board favorites = 2;
+}
+
+message PutBoardsResponse {
+  bool success = 1;
+}
+
+
+
+message Firmware {
+  string name = 1;
+  bool favourite = 2;
+}
+
+message GetFirmwareRequest {
+}
+
+message GetFirmwareResponse {
+  repeated Firmware all = 1;
+  repeated Firmware favorites = 2;
+}
+
+message PutFirmwareRequest {
+  repeated Firmware all = 1;
+  repeated Firmware favorites = 2;
+}
+
+message PutFirmwareResponse {
+  bool success = 1;
 }
 
 message DeviceUpdateStatus {
@@ -39,12 +74,12 @@ message DeviceUpdateStatus {
   }
 
   Status status = 1;
-  optional float flashingProgress = 2;
-  optional string image = 3;
+  float flashingProgress = 2;
+  string image = 3;
 }
 
 message FileUpload {
-  optional uint64 uid = 1;
+  uint64 uid = 1;
 
   enum FileType {
     FIRMWARE = 0;
@@ -95,12 +130,21 @@ message GenericMessage {
     google.protobuf.Empty heartbeat = 101;
     google.protobuf.Empty ok = 102;
 
-    GetBoardsRequest getBoardsRequest = 200;
-    GetBoardsResponse getBoardsResponse = 201;
+    GetBoardsRequest getBoardsRequest = 210;
+    GetBoardsResponse getBoardsResponse = 211;
+    PutBoardsRequest putBoardsRequest = 212;
+    PutBoardsResponse putBoardsResponse = 213;
 
-    DeviceUpdateStatus deviceUpdateStatus = 202;
+
+    GetFirmwareRequest getFirmwareRequest = 220;
+    GetFirmwareResponse getFirmwareResponse = 221;
+    PutFirmwareRequest putFirmwareRequest = 222;
+    PutFirmwareResponse putFirmwareResponse = 223;
+
+
     // Response: Ok(102)
 
+    DeviceUpdateStatus deviceUpdateStatus = 202;
     FileUpload fileUpload = 203;
 
     TestMessage test = 301;

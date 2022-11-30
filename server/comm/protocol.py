@@ -13,11 +13,12 @@ class Board(object):
 
 
 @dataclass
-class Boards(object):
-    boards: List[Board] = field(default_factory=list)
+class BoardsData(object):
+    all: List[Board] = field(default_factory=list)
+    favorites: List[Board] = field(default_factory=list)
 
 
-class OnGetBoards(IResponder[None, Boards]):
+class OnGetBoards(IResponder[None, BoardsData]):
 
     @property
     def request_payload(self) -> str:
@@ -26,19 +27,49 @@ class OnGetBoards(IResponder[None, Boards]):
     def unpack_request(self, request: pb.GenericMessage) -> None:
         return None
 
-    def prepare_response(self, response: Boards) -> pb.GenericMessage:
+    def prepare_response(self, response: BoardsData) -> pb.GenericMessage:
+        toDto = lambda b: pb.GetBoardsResponse.Board(name=b.name, favourite=b.favourite)
         return pb.GenericMessage(
             getBoardsResponse=pb.GetBoardsResponse(
-                board=[pb.GetBoardsResponse.Board(name=b.name,
-                                                  favourite=b.favourite)
-                       for b in response.boards]
+                all=[toDto(b) for b in response.all],
+                favorites=[toDto(b) for b in response.all]
+            )
+        )
+
+
+@dataclass
+class Firmware(object):
+    name: str
+    favourite: bool
+
+
+@dataclass
+class FirmwareData(object):
+    all: List[Firmware] = field(default_factory=list)
+    favorites: List[Firmware] = field(default_factory=list)
+
+
+class OnGetFirmware(IResponder[None, FirmwareData]):
+
+    @property
+    def request_payload(self) -> str:
+        return "getFirmwareRequest"
+
+    def unpack_request(self, request: pb.GenericMessage) -> None:
+        return None
+
+    def prepare_response(self, response: FirmwareData) -> pb.GenericMessage:
+        toDto = lambda b: pb.GetFirmwareResponse.Firmware(name=b.name, favourite=b.favourite)
+        return pb.GenericMessage(
+            getFirmwareResponse=pb.GetFirmwareResponse(
+                all=[toDto(b) for b in response.all],
+                favorites=[toDto(b) for b in response.all]
             )
         )
 
 
 @dataclass
 class DeviceStatus(object):
-
     class Status(IntEnum):
         UNREACHABLE = 0
         READY = 1
@@ -79,7 +110,6 @@ class UpdateDeviceStatus(IRequester[None]):
 
 
 class FileUpload(object):
-
     @dataclass
     class Request(object):
         pass

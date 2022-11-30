@@ -15,14 +15,19 @@ from server.comm.session.session import Session
 
 
 class GetBoardsResponder(protocol.OnGetBoards):
-
-    def on_request(self, request) -> Future[protocol.Boards]:
-        future: Future[protocol.Boards] = Future()
-        future.set_result(protocol.Boards(
-            boards=["test 0", "test 1"]
+    def on_request(self, request) -> Future[protocol.BoardsData]:
+        future: Future[protocol.BoardsData] = Future()
+        future.set_result(protocol.BoardsData(
+            all=[
+                protocol.Board("Test Board 1", False),
+                protocol.Board("Test Board 2", True),
+            ],
+            favorites=[
+                protocol.Board("Test Board 1", False),
+                protocol.Board("Test Board 2", True),
+            ]
         ))
         return future
-
 
 class MobileClient(IConnectionClient):
 
