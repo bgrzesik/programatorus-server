@@ -86,10 +86,13 @@ class IResponder(ABC, Generic[Request, Response]):
 
             if res.cancelled():
                 future.cancel()
+                print("cancelled")
             elif res.exception():
                 future.set_exception(res.exception())
+                print("exception")
             else:
                 future.set_result(self.prepare_response(res.result()))
+                print("good")
 
         self.on_request(req).add_done_callback(prepare_response_wrapper)
 
@@ -115,6 +118,8 @@ class RequestRouter(ISessionClient):
             return future
 
         responder = self._responders[payload]
+        print(responder)
+
         return responder.handle(request)
 
     def on_state_changed(self, state):
