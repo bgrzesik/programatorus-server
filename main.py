@@ -111,6 +111,21 @@ class GetFirmwareResponder(protocol.OnGetFirmware):
         ))
         return future
 
+class PutFirmwareResponder(protocol.OnPutFirmware):
+
+    def on_request(self, request) -> Future[bool]:
+        print("putFirmwareResponder", request)
+        future: Future[bool] = Future()
+        future.set_result(True)
+        return future
+
+class PutBoardsResponder(protocol.OnPutBoards):
+
+    def on_request(self, request) -> Future[bool]:
+        print("putBoardsResponder", request)
+        future: Future[bool] = Future()
+        future.set_result(True)
+        return future
 
 class MobileClient(IConnectionClient):
 
@@ -119,6 +134,8 @@ class MobileClient(IConnectionClient):
             GetBoardsResponder(),
             FileUploadHandler(file_store),
             GetFirmwareResponder(),
+            PutFirmwareResponder(),
+            PutBoardsResponder(),
             client=self
         )
 

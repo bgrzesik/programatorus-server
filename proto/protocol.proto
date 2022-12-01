@@ -65,6 +65,18 @@ message PutFirmwareResponse {
   bool success = 1;
 }
 
+
+message FlashRequest {
+    Firmware firmware = 1;
+    Board board = 2;
+}
+
+message FlashResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+
 message DeviceUpdateStatus {
   enum Status {
     UNREACHABLE = 0;
@@ -140,6 +152,9 @@ message GenericMessage {
     GetFirmwareResponse getFirmwareResponse = 221;
     PutFirmwareRequest putFirmwareRequest = 222;
     PutFirmwareResponse putFirmwareResponse = 223;
+
+    FlashRequest flashRequest = 230;
+    FlashResponse flashResponse = 231
 
 
     // Response: Ok(102)
