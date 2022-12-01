@@ -28,7 +28,7 @@ class OnGetBoards(IResponder[None, BoardsData]):
         return None
 
     def prepare_response(self, response: BoardsData) -> pb.GenericMessage:
-        toDto = lambda b: pb.GetBoardsResponse.Board(name=b.name, favourite=b.favourite)
+        toDto = lambda b: pb.Board(name=b.name, favourite=b.favourite)
         return pb.GenericMessage(
             getBoardsResponse=pb.GetBoardsResponse(
                 all=[toDto(b) for b in response.all],
@@ -59,7 +59,8 @@ class OnGetFirmware(IResponder[None, FirmwareData]):
         return None
 
     def prepare_response(self, response: FirmwareData) -> pb.GenericMessage:
-        toDto = lambda b: pb.GetFirmwareResponse.Firmware(name=b.name, favourite=b.favourite)
+        toDto = lambda b: pb.Firmware(name=b.name, favourite=b.favourite)
+        print("preparing response")
         return pb.GenericMessage(
             getFirmwareResponse=pb.GetFirmwareResponse(
                 all=[toDto(b) for b in response.all],

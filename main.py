@@ -93,9 +93,11 @@ class GetBoardsResponder(protocol.OnGetBoards):
         ))
         return future
 
+
 class GetFirmwareResponder(protocol.OnGetFirmware):
 
     def on_request(self, request) -> Future[protocol.FirmwareData]:
+        print("getFirmwareResponder")
         future: Future[protocol.FirmwareData] = Future()
         future.set_result(protocol.FirmwareData(
             all=[
@@ -195,7 +197,7 @@ def main():
 
 if __name__ == "__main__":
     import sys
-    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG,
+    logging.basicConfig(stream=sys.stdout, level=logging.ERROR,
                         format="%(asctime)s,%(msecs)d %(levelname)-8s "
                         "[%(filename)s:%(lineno)d] %(message)s")
     main()
