@@ -69,6 +69,49 @@ class OnGetFirmware(IResponder[None, FirmwareData]):
         )
 
 
+
+class OnPutFirmware(IResponder[FirmwareData, bool]):
+
+    @property
+    def request_payload(self) -> str:
+        return "putFirmwareRequest"
+
+    def unpack_request(self, request: pb.GenericMessage) -> FirmwareData:
+        val = FirmwareData(request.putFirmwareRequest.all, request.putFirmwareRequest.favorites)
+        return val
+
+    def prepare_response(self, response: bool) -> pb.GenericMessage:
+        print("preparing response")
+        return pb.GenericMessage(
+            putFirmwareResponse=pb.PutFirmwareResponse(
+                success=response
+            )
+        )
+
+
+class OnPutBoards(IResponder[BoardsData, bool]):
+
+    @property
+    def request_payload(self) -> str:
+        return "putBoardsRequest"
+
+    def unpack_request(self, request: pb.GenericMessage) -> BoardsData:
+        val = BoardsData(request.putBoardsRequest.all, request.putBoardsRequest.favorites)
+        return val
+
+    def prepare_response(self, response: bool) -> pb.GenericMessage:
+        print("preparing response")
+        return pb.GenericMessage(
+            putBoardsResponse=pb.PutBoardsResponse(
+                success=response
+            )
+        )
+
+@dataclass
+class FlashRequestQuery(object):
+    board: Board = field()
+    firmware: Firmware = field()
+
 @dataclass
 class DeviceStatus(object):
     class Status(IntEnum):
