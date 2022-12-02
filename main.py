@@ -87,7 +87,6 @@ class GetBoardsResponder(protocol.OnGetBoards):
                 protocol.Board("Test Board 2", True),
             ],
             favorites=[
-                protocol.Board("Test Board 1", False),
                 protocol.Board("Test Board 2", True),
             ]
         ))
@@ -105,7 +104,6 @@ class GetFirmwareResponder(protocol.OnGetFirmware):
                 protocol.Firmware("Test Firmware 2", True),
             ],
             favorites=[
-                protocol.Firmware("Test Firmware 1", False),
                 protocol.Firmware("Test Firmware 2", True),
             ]
         ))
@@ -127,6 +125,18 @@ class PutBoardsResponder(protocol.OnPutBoards):
         future.set_result(True)
         return future
 
+class FlashRequestResponder(protocol.OnFlashRequest):
+
+    def __init__(self):
+        fs = FlashService()
+        request_handler = RequestHandler.serve(fs)
+        self.proxy = Proxy.serve(request_handler)
+    def on_request(self, request) -> Future[str]:
+        print("flash", request)
+        args = {"board": request.board, "target": request.firmware}
+        future: Future[str] = self.proxy.start_async("flash", args)
+        return future
+
 class MobileClient(IConnectionClient):
 
     def __init__(self, transport: ITransportBuilder, file_store: FileStore):
@@ -136,6 +146,7 @@ class MobileClient(IConnectionClient):
             GetFirmwareResponder(),
             PutFirmwareResponder(),
             PutBoardsResponder(),
+            FlashRequestResponder(),
             client=self
         )
 
