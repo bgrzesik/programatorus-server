@@ -108,9 +108,26 @@ class OnPutBoards(IResponder[BoardsData, bool]):
         )
 
 @dataclass
-class FlashRequestQuery(object):
+class FlashRequest(object):
     board: Board = field()
     firmware: Firmware = field()
+
+class OnFlashRequest(IResponder[FlashRequest, str]):
+
+    @property
+    def request_payload(self) -> str:
+        return "flashRequest"
+
+    def unpack_request(self, request: pb.GenericMessage) -> FlashRequest:
+        return FlashRequest(request.flashRequest.board, request.flashRequest.firmware)
+
+    def prepare_response(self, response: str) -> pb.GenericMessage:
+        print("preparing response")
+        return pb.GenericMessage(
+            flashResponse=pb.FlashResponse(
+                message=response
+            )
+        )
 
 @dataclass
 class DeviceStatus(object):

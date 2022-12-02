@@ -233,6 +233,45 @@ class PutFirmwareResponse(google.protobuf.message.Message):
 global___PutFirmwareResponse = PutFirmwareResponse
 
 @typing_extensions.final
+class FlashRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    FIRMWARE_FIELD_NUMBER: builtins.int
+    BOARD_FIELD_NUMBER: builtins.int
+    @property
+    def firmware(self) -> global___Firmware: ...
+    @property
+    def board(self) -> global___Board: ...
+    def __init__(
+        self,
+        *,
+        firmware: global___Firmware | None = ...,
+        board: global___Board | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["board", b"board", "firmware", b"firmware"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["board", b"board", "firmware", b"firmware"]) -> None: ...
+
+global___FlashRequest = FlashRequest
+
+@typing_extensions.final
+class FlashResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    SUCCESS_FIELD_NUMBER: builtins.int
+    MESSAGE_FIELD_NUMBER: builtins.int
+    success: builtins.bool
+    message: builtins.str
+    def __init__(
+        self,
+        *,
+        success: builtins.bool = ...,
+        message: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["message", b"message", "success", b"success"]) -> None: ...
+
+global___FlashResponse = FlashResponse
+
+@typing_extensions.final
 class DeviceUpdateStatus(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -399,6 +438,8 @@ class GenericMessage(google.protobuf.message.Message):
     GETFIRMWARERESPONSE_FIELD_NUMBER: builtins.int
     PUTFIRMWAREREQUEST_FIELD_NUMBER: builtins.int
     PUTFIRMWARERESPONSE_FIELD_NUMBER: builtins.int
+    FLASHREQUEST_FIELD_NUMBER: builtins.int
+    FLASHRESPONSE_FIELD_NUMBER: builtins.int
     DEVICEUPDATESTATUS_FIELD_NUMBER: builtins.int
     FILEUPLOAD_FIELD_NUMBER: builtins.int
     TEST_FIELD_NUMBER: builtins.int
@@ -429,6 +470,10 @@ class GenericMessage(google.protobuf.message.Message):
     @property
     def putFirmwareResponse(self) -> global___PutFirmwareResponse: ...
     @property
+    def flashRequest(self) -> global___FlashRequest: ...
+    @property
+    def flashResponse(self) -> global___FlashResponse: ...
+    @property
     def deviceUpdateStatus(self) -> global___DeviceUpdateStatus:
         """Response: Ok(102)"""
     @property
@@ -454,16 +499,18 @@ class GenericMessage(google.protobuf.message.Message):
         getFirmwareResponse: global___GetFirmwareResponse | None = ...,
         putFirmwareRequest: global___PutFirmwareRequest | None = ...,
         putFirmwareResponse: global___PutFirmwareResponse | None = ...,
+        flashRequest: global___FlashRequest | None = ...,
+        flashResponse: global___FlashResponse | None = ...,
         deviceUpdateStatus: global___DeviceUpdateStatus | None = ...,
         fileUpload: global___FileUpload | None = ...,
         test: global___TestMessage | None = ...,
         error: global___ErrorMessage | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["deviceUpdateStatus", b"deviceUpdateStatus", "error", b"error", "fileUpload", b"fileUpload", "getBoardsRequest", b"getBoardsRequest", "getBoardsResponse", b"getBoardsResponse", "getFirmwareRequest", b"getFirmwareRequest", "getFirmwareResponse", b"getFirmwareResponse", "heartbeat", b"heartbeat", "id", b"id", "ok", b"ok", "payload", b"payload", "putBoardsRequest", b"putBoardsRequest", "putBoardsResponse", b"putBoardsResponse", "putFirmwareRequest", b"putFirmwareRequest", "putFirmwareResponse", b"putFirmwareResponse", "request", b"request", "response", b"response", "setSessionId", b"setSessionId", "test", b"test"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["deviceUpdateStatus", b"deviceUpdateStatus", "error", b"error", "fileUpload", b"fileUpload", "getBoardsRequest", b"getBoardsRequest", "getBoardsResponse", b"getBoardsResponse", "getFirmwareRequest", b"getFirmwareRequest", "getFirmwareResponse", b"getFirmwareResponse", "heartbeat", b"heartbeat", "id", b"id", "ok", b"ok", "payload", b"payload", "putBoardsRequest", b"putBoardsRequest", "putBoardsResponse", b"putBoardsResponse", "putFirmwareRequest", b"putFirmwareRequest", "putFirmwareResponse", b"putFirmwareResponse", "request", b"request", "response", b"response", "sessionId", b"sessionId", "setSessionId", b"setSessionId", "test", b"test"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["deviceUpdateStatus", b"deviceUpdateStatus", "error", b"error", "fileUpload", b"fileUpload", "flashRequest", b"flashRequest", "flashResponse", b"flashResponse", "getBoardsRequest", b"getBoardsRequest", "getBoardsResponse", b"getBoardsResponse", "getFirmwareRequest", b"getFirmwareRequest", "getFirmwareResponse", b"getFirmwareResponse", "heartbeat", b"heartbeat", "id", b"id", "ok", b"ok", "payload", b"payload", "putBoardsRequest", b"putBoardsRequest", "putBoardsResponse", b"putBoardsResponse", "putFirmwareRequest", b"putFirmwareRequest", "putFirmwareResponse", b"putFirmwareResponse", "request", b"request", "response", b"response", "setSessionId", b"setSessionId", "test", b"test"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["deviceUpdateStatus", b"deviceUpdateStatus", "error", b"error", "fileUpload", b"fileUpload", "flashRequest", b"flashRequest", "flashResponse", b"flashResponse", "getBoardsRequest", b"getBoardsRequest", "getBoardsResponse", b"getBoardsResponse", "getFirmwareRequest", b"getFirmwareRequest", "getFirmwareResponse", b"getFirmwareResponse", "heartbeat", b"heartbeat", "id", b"id", "ok", b"ok", "payload", b"payload", "putBoardsRequest", b"putBoardsRequest", "putBoardsResponse", b"putBoardsResponse", "putFirmwareRequest", b"putFirmwareRequest", "putFirmwareResponse", b"putFirmwareResponse", "request", b"request", "response", b"response", "sessionId", b"sessionId", "setSessionId", b"setSessionId", "test", b"test"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing_extensions.Literal["id", b"id"]) -> typing_extensions.Literal["request", "response"] | None: ...
     @typing.overload
-    def WhichOneof(self, oneof_group: typing_extensions.Literal["payload", b"payload"]) -> typing_extensions.Literal["setSessionId", "heartbeat", "ok", "getBoardsRequest", "getBoardsResponse", "putBoardsRequest", "putBoardsResponse", "getFirmwareRequest", "getFirmwareResponse", "putFirmwareRequest", "putFirmwareResponse", "deviceUpdateStatus", "fileUpload", "test", "error"] | None: ...
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["payload", b"payload"]) -> typing_extensions.Literal["setSessionId", "heartbeat", "ok", "getBoardsRequest", "getBoardsResponse", "putBoardsRequest", "putBoardsResponse", "getFirmwareRequest", "getFirmwareResponse", "putFirmwareRequest", "putFirmwareResponse", "flashRequest", "flashResponse", "deviceUpdateStatus", "fileUpload", "test", "error"] | None: ...
 
 global___GenericMessage = GenericMessage

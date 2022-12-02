@@ -154,7 +154,7 @@ message GenericMessage {
     PutFirmwareResponse putFirmwareResponse = 223;
 
     FlashRequest flashRequest = 230;
-    FlashResponse flashResponse = 231
+    FlashResponse flashResponse = 231;
 
 
     // Response: Ok(102)

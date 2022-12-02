@@ -28,7 +28,7 @@ class RequestHandler(object):
             "-c",
             f"program /home/pi/bin_files/{args['target']} verify reset exit",
         ]
-        return self.flash_service.flash(cmd)
+        return str(self.flash_service.flash(cmd)[1])
 
     def start_async(self, request, args):
         return self.request_handlers[request](args)
@@ -59,7 +59,7 @@ class Proxy(object):
         return res
 
     @staticmethod
-    def serve(service: FlashService) -> "Proxy":
+    def serve(service: RequestHandler) -> "Proxy":
         executor = futures.ThreadPoolExecutor(max_workers=1)
         proxy = Proxy(executor, service)
         return proxy
