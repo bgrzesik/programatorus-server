@@ -8,6 +8,8 @@ import Adafruit_SSD1306
 from gpiozero import Button
 from PIL import ImageDraw, Image
 
+from server.comm.protocol import BoardsData, FirmwareData
+from server.target.config_repository import ConfigFilesRepository, BoardsService, FirmwareService
 from server.target.request_handler import Proxy, RequestHandler
 from server.target.demo_store import get_files
 from server.target.flash import FlashService
@@ -79,8 +81,14 @@ class ProgramFlashMenuItem(MenuItem):
 
 class GetBoardsResponder(protocol.OnGetBoards):
 
+    def __init__(self, boards_service: BoardsService):
+        self.board_service = boards_service
+
     def on_request(self, request) -> Future[protocol.BoardsData]:
         future: Future[protocol.BoardsData] = Future()
+        # future.set_result(
+        #     self.board_service.get()
+        # )
         future.set_result(protocol.BoardsData(
             all=[
                 protocol.Board("Test Board 1", False),
@@ -95,33 +103,38 @@ class GetBoardsResponder(protocol.OnGetBoards):
 
 class GetFirmwareResponder(protocol.OnGetFirmware):
 
+    def __init__(self, firmware_service: FirmwareService):
+        self.firmware_service = firmware_service
+
     def on_request(self, request) -> Future[protocol.FirmwareData]:
         print("getFirmwareResponder")
         future: Future[protocol.FirmwareData] = Future()
-        future.set_result(protocol.FirmwareData(
-            all=[
-                protocol.Firmware("Test Firmware 1", False),
-                protocol.Firmware("Test Firmware 2", True),
-            ],
-            favorites=[
-                protocol.Firmware("Test Firmware 2", True),
-            ]
-        ))
+        future.set_result(
+            self.firmware_service.get()
+        )
         return future
 
 class PutFirmwareResponder(protocol.OnPutFirmware):
 
-    def on_request(self, request) -> Future[bool]:
-        print("putFirmwareResponder", request)
+    def __init__(self, firmware_service: FirmwareService):
+        self.firmware_service = firmware_service
+    def on_request(self, request: FirmwareData) -> Future[bool]:
+        print("putFirmwareResponder", request.__class__, request)
         future: Future[bool] = Future()
+        print(request)
+        self.firmware_service.put(request)
         future.set_result(True)
         return future
 
 class PutBoardsResponder(protocol.OnPutBoards):
 
-    def on_request(self, request) -> Future[bool]:
+    def __init__(self, boards_service: BoardsService):
+        self.board_service = boards_service
+
+    def on_request(self, request: BoardsData) -> Future[bool]:
         print("putBoardsResponder", request)
         future: Future[bool] = Future()
+        self.board_service.put(request)
         future.set_result(True)
         return future
 
@@ -139,13 +152,17 @@ class FlashRequestResponder(protocol.OnFlashRequest):
 
 class MobileClient(IConnectionClient):
 
-    def __init__(self, transport: ITransportBuilder, file_store: FileStore):
+    def __init__(self, transport: ITransportBuilder, file_store: FileStore, file_repository: ConfigFilesRepository):
+
+        boards_service = BoardsService(file_repository)
+        firmware_service = FirmwareService(file_repository)
+
         self._router = RequestRouter(
-            GetBoardsResponder(),
+            GetBoardsResponder(boards_service),
             FileUploadHandler(file_store),
-            GetFirmwareResponder(),
-            PutFirmwareResponder(),
-            PutBoardsResponder(),
+            GetFirmwareResponder(firmware_service),
+            PutFirmwareResponder(firmware_service),
+            PutBoardsResponder(boards_service),
             FlashRequestResponder(),
             client=self
         )
@@ -171,10 +188,15 @@ class ListenerClient(IListenerClient):
     def __init__(self):
         self._clients: List[MobileClient] = []
         self._file_store = FileStore()
+        self._config_files_repository = ConfigFilesRepository()
 
     def on_connect(self, transport_builder: ITransportBuilder):
         logging.info("on_connect():")
-        self._clients.append(MobileClient(transport_builder, self._file_store))
+        self._clients.append(MobileClient(
+            transport_builder,
+            self._file_store,
+            self._config_files_repository
+        ))
 
 
 def main():

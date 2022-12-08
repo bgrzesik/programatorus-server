@@ -77,8 +77,7 @@ class OnPutFirmware(IResponder[FirmwareData, bool]):
         return "putFirmwareRequest"
 
     def unpack_request(self, request: pb.GenericMessage) -> FirmwareData:
-        val = FirmwareData(request.putFirmwareRequest.all, request.putFirmwareRequest.favorites)
-        return val
+        return FirmwareData(request.putFirmwareRequest.all, request.putFirmwareRequest.favorites)
 
     def prepare_response(self, response: bool) -> pb.GenericMessage:
         print("preparing response")
@@ -96,8 +95,7 @@ class OnPutBoards(IResponder[BoardsData, bool]):
         return "putBoardsRequest"
 
     def unpack_request(self, request: pb.GenericMessage) -> BoardsData:
-        val = BoardsData(request.putBoardsRequest.all, request.putBoardsRequest.favorites)
-        return val
+        return BoardsData(request.putBoardsRequest.all, request.putBoardsRequest.favorites)
 
     def prepare_response(self, response: bool) -> pb.GenericMessage:
         print("preparing response")
