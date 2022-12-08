@@ -91,8 +91,7 @@ class GetBoardsResponder(protocol.OnGetBoards):
         # )
         future.set_result(protocol.BoardsData(
             all=[
-                protocol.Board("Test Board 1", False),
-                protocol.Board("Test Board 2", True),
+                protocol.Board(f"Test Board {i}", False) for i in range(600)
             ],
             favorites=[
                 protocol.Board("Test Board 2", True),
