@@ -39,7 +39,7 @@ class ConfigFilesRepository():
     def get_all_boards(self) -> list[str]:
         return self.all_boards
 
-    def get_all_firmware(self) -> list[str]:
+    def get_all_firmwares(self) -> list[str]:
         return self.all_firmware
 
     def set_fav_firmwares(self, favorites: list[str]):
@@ -82,7 +82,7 @@ class FirmwareService(object):
         fav_set = set(fav)
 
         val = FirmwareData(
-            all=list(map(lambda s: Firmware(s, s in fav_set), self.repository.get_all_firmware())),
+            all=list(map(lambda s: Firmware(s, s in fav_set), self.repository.get_all_firmwares())),
             favorites=list(map(lambda s: Firmware(s, True), fav)),
         )
         print(val)
