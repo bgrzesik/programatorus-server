@@ -60,7 +60,6 @@ class OnGetFirmware(IResponder[None, FirmwareData]):
 
     def prepare_response(self, response: FirmwareData) -> pb.GenericMessage:
         toDto = lambda b: pb.Firmware(name=b.name, favourite=b.favourite)
-        print("preparing response")
         return pb.GenericMessage(
             getFirmwareResponse=pb.GetFirmwareResponse(
                 all=[toDto(b) for b in response.all],
@@ -80,7 +79,6 @@ class OnPutFirmware(IResponder[FirmwareData, bool]):
         return FirmwareData(request.putFirmwareRequest.all, request.putFirmwareRequest.favorites)
 
     def prepare_response(self, response: bool) -> pb.GenericMessage:
-        print("preparing response")
         return pb.GenericMessage(
             putFirmwareResponse=pb.PutFirmwareResponse(
                 success=response
@@ -98,7 +96,6 @@ class OnPutBoards(IResponder[BoardsData, bool]):
         return BoardsData(request.putBoardsRequest.all, request.putBoardsRequest.favorites)
 
     def prepare_response(self, response: bool) -> pb.GenericMessage:
-        print("preparing response")
         return pb.GenericMessage(
             putBoardsResponse=pb.PutBoardsResponse(
                 success=response
@@ -120,7 +117,6 @@ class OnFlashRequest(IResponder[FlashRequest, str]):
         return FlashRequest(request.flashRequest.board, request.flashRequest.firmware)
 
     def prepare_response(self, response: str) -> pb.GenericMessage:
-        print("preparing response")
         return pb.GenericMessage(
             flashResponse=pb.FlashResponse(
                 message=response
@@ -169,6 +165,7 @@ class UpdateDeviceStatus(IRequester[None]):
 
 
 class FileUpload(object):
+
     @dataclass
     class Request(object):
         pass
