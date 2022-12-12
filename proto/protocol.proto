@@ -128,6 +128,23 @@ message FileUpload {
   }
 }
 
+message DebuggerStart {
+  string target = 1;
+  string firmware = 2;
+}
+
+message DebuggerStarted {
+  uint32 sessionId = 1;
+}
+
+message DebuggerStop {
+}
+
+message DebuggerLine {
+  uint64 ordinal = 2;
+  string line = 3;
+}
+
 message GenericMessage {
   uint64 sessionId = 1;
 
@@ -161,6 +178,15 @@ message GenericMessage {
 
     DeviceUpdateStatus deviceUpdateStatus = 202;
     FileUpload fileUpload = 203;
+
+    DebuggerStart debuggerStart = 204;
+    DebuggerStarted debuggerStarted = 205;
+
+    DebuggerStop debuggerStop = 206;
+    // Response: Ok(102)
+
+    DebuggerLine debuggerLine = 207;
+    // Response: Ok(102)
 
     TestMessage test = 301;
     ErrorMessage error = 302;
