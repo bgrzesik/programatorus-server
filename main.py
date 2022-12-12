@@ -86,17 +86,9 @@ class GetBoardsResponder(protocol.OnGetBoards):
 
     def on_request(self, request) -> Future[protocol.BoardsData]:
         future: Future[protocol.BoardsData] = Future()
-        # future.set_result(
-        #     self.board_service.get()
-        # )
-        future.set_result(protocol.BoardsData(
-            all=[
-                protocol.Board(f"Test Board {i}", False) for i in range(600)
-            ],
-            favorites=[
-                protocol.Board("Test Board 2", True),
-            ]
-        ))
+        future.set_result(
+            self.board_service.get()
+        )
         return future
 
 

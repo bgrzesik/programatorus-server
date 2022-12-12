@@ -32,7 +32,7 @@ class OnGetBoards(IResponder[None, BoardsData]):
         return pb.GenericMessage(
             getBoardsResponse=pb.GetBoardsResponse(
                 all=[toDto(b) for b in response.all],
-                favorites=[toDto(b) for b in response.all]
+                favorites=[toDto(b) for b in response.favorites]
             )
         )
 
@@ -64,7 +64,7 @@ class OnGetFirmware(IResponder[None, FirmwareData]):
         return pb.GenericMessage(
             getFirmwareResponse=pb.GetFirmwareResponse(
                 all=[toDto(b) for b in response.all],
-                favorites=[toDto(b) for b in response.all]
+                favorites=[toDto(b) for b in response.favorites]
             )
         )
 
