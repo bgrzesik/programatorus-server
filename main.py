@@ -98,7 +98,6 @@ class GetFirmwareResponder(protocol.OnGetFirmware):
         self.firmware_service = firmware_service
 
     def on_request(self, request) -> Future[protocol.FirmwareData]:
-        print("getFirmwareResponder")
         future: Future[protocol.FirmwareData] = Future()
         future.set_result(
             self.firmware_service.get()
@@ -110,9 +109,7 @@ class PutFirmwareResponder(protocol.OnPutFirmware):
     def __init__(self, firmware_service: FirmwareService):
         self.firmware_service = firmware_service
     def on_request(self, request: FirmwareData) -> Future[bool]:
-        print("putFirmwareResponder", request.__class__, request)
         future: Future[bool] = Future()
-        print(request)
         self.firmware_service.put(request)
         future.set_result(True)
         return future
@@ -123,7 +120,6 @@ class PutBoardsResponder(protocol.OnPutBoards):
         self.board_service = boards_service
 
     def on_request(self, request: BoardsData) -> Future[bool]:
-        print("putBoardsResponder", request)
         future: Future[bool] = Future()
         self.board_service.put(request)
         future.set_result(True)
@@ -136,7 +132,6 @@ class FlashRequestResponder(protocol.OnFlashRequest):
         request_handler = RequestHandler.serve(fs)
         self.proxy = Proxy.serve(request_handler)
     def on_request(self, request) -> Future[str]:
-        print("flash", request)
         args = {"board": request.board, "target": request.firmware}
         future: Future[str] = self.proxy.start_async("flash", args)
         return future

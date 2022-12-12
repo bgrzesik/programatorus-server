@@ -67,7 +67,6 @@ class BoardsService(object):
         )
 
     def put(self, data: BoardsData):
-        print(data)
         self.repository.set_fav_boards(list(map(lambda x: x.name, data.favorites)))
 
 
@@ -81,13 +80,10 @@ class FirmwareService(object):
         fav = self.repository.get_fav_firmwares()
         fav_set = set(fav)
 
-        val = FirmwareData(
+        return FirmwareData(
             all=list(map(lambda s: Firmware(s, s in fav_set), self.repository.get_all_firmwares())),
             favorites=list(map(lambda s: Firmware(s, True), fav)),
         )
-        print(val)
-        return val
 
     def put(self, data: FirmwareData):
-        print("put", data)
         self.repository.set_fav_firmwares(list(map(lambda x: x.name, data.favorites)))
