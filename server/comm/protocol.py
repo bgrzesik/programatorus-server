@@ -2,6 +2,8 @@ from enum import IntEnum
 from typing import List, Optional, Tuple
 from dataclasses import dataclass, field
 
+from google.protobuf import empty_pb2
+
 from .app import IRequester, IResponder
 from .presentation import protocol_pb2 as pb
 
@@ -247,3 +249,91 @@ class OnFileUpload(IResponder[FileUpload.Request, FileUpload.Response]):
                 result=result.to_proto()
             )
         )
+
+
+@dataclass
+class DebuggerStart(object):
+    session_id: int
+    target: str
+    firmware: str
+
+
+class OnDebuggerStart(IResponder[DebuggerStart, int]):
+    "Handler's response is mapped to sessionId"
+
+    @property
+    def request_payload(self) -> str:
+        return "debuggerStart"
+
+    def unpack_request(self, request: pb.GenericMessage) -> DebuggerStart:
+        session_id = request.sessionId
+        start = request.debuggerStart
+        return DebuggerStart(session_id, start.target, start.firmware)
+
+    def prepare_response(self, response: int) -> pb.GenericMessage:
+        return pb.GenericMessage(
+            debuggerStarted=pb.DebuggerStarted(
+                sessionId=response
+            )
+        )
+
+
+class OnDebuggerStop(IResponder[int, None]):
+    "Handler's request is mapped to sessionId"
+
+    @property
+    def request_payload(self) -> str:
+        return "debuggerStop"
+
+    def unpack_request(self, request: pb.GenericMessage) -> int:
+        return request.sessionId
+
+    def prepare_response(self, response) -> pb.GenericMessage:
+        return pb.GenericMessage(
+            ok=empty_pb2.Empty()
+        )
+
+
+@dataclass
+class DebuggerLine(object):
+    session_id: int
+    ordinal: int
+    line: str
+
+
+class OnDebuggerLine(IResponder[DebuggerLine, None]):
+
+    @property
+    def request_payload(self) -> str:
+        return "debuggerStop"
+
+    def unpack_request(self, request: pb.GenericMessage) -> DebuggerLine:
+        session_id = request.sessionId
+        line = request.debuggerLine
+        return DebuggerLine(session_id, line.ordinal, line.line)
+
+    def prepare_response(self, response) -> pb.GenericMessage:
+        return pb.GenericMessage(
+            ok=empty_pb2.Empty()
+        )
+
+
+class SendDebuggerLine(IRequester[None]):
+
+    def __init__(self, line):
+        self._line: DebuggerLine = line
+
+    def prepare(self) -> pb.GenericMessage:
+        return pb.GenericMessage(
+            debuggerLine=pb.DebuggerLine(
+                ordinal=self._line.ordinal,
+                line=self._line.line
+            )
+        )
+
+    @property
+    def response_payload(self) -> str:
+        return "ok"
+
+    def handle_response(self, response: pb.GenericMessage) -> None:
+        return None
