@@ -1,5 +1,5 @@
 from concurrent.futures import Future
-from .menu import MenuItem, FONT
+from .menu_item import MenuItem, FONT
 
 import os
 if os.uname().sysname == "Linux":
@@ -11,8 +11,7 @@ else:
 
 class PairDialog(MenuItem, PairingClient):
     def __init__(self):
-        super().__init__("Enable pairing")
-        self.height = 16
+        super().__init__(["Enable pairing"])
         self.width = 96
         self._agent = PairingAgent(self)
         self._pin = None
@@ -33,13 +32,21 @@ class PairDialog(MenuItem, PairingClient):
 
     @property
     def visible_text(self):
-        return self.text + "\n" + "YES [OK]    NO [<-]"
+        return self.text + "\n" + "YES (OK)    NO (<-)"
 
-    def on_click(self, select=True):
+    def on_select(self):
         if self._pin is None:
             pass
         else:
-            self._future.set_result(select)
+            self._future.set_result(True)
+            self._pin = None
+            self.text = "Connect now"
+
+    def on_back(self):
+        if self._pin is None:
+            pass
+        else:
+            self._future.set_result(False)
             self._pin = None
             self.text = "Connect now"
 

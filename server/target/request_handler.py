@@ -28,7 +28,7 @@ class RequestHandler(object):
             "-c",
             f"program /home/pi/bin_files/{args['target']} verify reset exit",
         ]
-        return str(self.flash_service.flash(cmd)[1])
+        return self.flash_service.flash(cmd)[1].decode("utf-8")
 
     def start_async(self, request, args):
         return self.request_handlers[request](args)
