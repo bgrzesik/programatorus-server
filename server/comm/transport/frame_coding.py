@@ -13,7 +13,7 @@ class FrameEncoder(object):
             self._write_slice(False)
 
     def write_slice_size(self, size: int):
-        assert size <= 0x3FFFF
+        assert size <= 0x7FFF
 
         lo = 0x80 | (size & 0x7F)
         size = size >> 7
