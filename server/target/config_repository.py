@@ -18,8 +18,8 @@ class ConfigFilesRepository():
         self.all_boards = glob.glob(f"{constants.BOARDS_PATH}/*.cfg")
         self.all_boards = sorted(list(map(extract_filename, self.all_boards)))
 
-        self.all_firmware = glob.glob(f"{constants.FIRMWARE_PATH}/*")
-        self.all_firmware = sorted(list(map(extract_filename, self.all_firmware)))
+        # self.all_firmware = glob.glob(f"{constants.FIRMWARE_PATH}/*")
+        # self.all_firmware = sorted(list(map(extract_filename, self.all_firmware)))
 
         self._store = pickledb.load(constants.DB_PATH, auto_dump=False)
 
@@ -28,6 +28,11 @@ class ConfigFilesRepository():
 
         if not self._store.exists(FAV_FIRMWARE):
             self._store.set(FAV_FIRMWARE, [])
+
+    @property
+    def all_firmware(self):
+        all_firmware = glob.glob(f"{constants.FIRMWARE_PATH}/*")
+        return sorted(list(map(extract_filename, all_firmware)))
 
     def set_fav_boards(self, favorites: list[str]):
         self._store.set(FAV_BOARDS, favorites)

@@ -11,10 +11,8 @@ from PIL import ImageDraw, Image
 from server.comm.protocol import BoardsData, FirmwareData
 from server.target.config_repository import ConfigFilesRepository, BoardsService, FirmwareService
 from server.target.request_handler import Proxy, RequestHandler
-from server.target.demo_store import get_files
 from server.target.flash import FlashService
-from server.ui.menu import MenuItem, Menu
-from server.ui.pair import PairDialog
+from server.ui.menu import Menu
 from server.comm import protocol
 from server.comm.app import RequestRouter
 from server.comm.connection import IConnectionClient
@@ -25,58 +23,6 @@ from server.comm.presentation.protocol_messenger import ProtocolMessenger
 from server.comm.transport.transport import ITransportBuilder
 from server.comm.session.session import Session
 from server.files.handler import FileStore, FileUploadHandler
-
-
-class TimeMenuItem(MenuItem):
-    def __init__(self):
-        MenuItem.__init__(self, None)
-
-    @property
-    def visible_text(self):
-        now = datetime.now()
-        return now.strftime("%H:%M:%S")
-
-
-class CounterMenuItem(MenuItem):
-    def __init__(self):
-        self.counter = 0
-        MenuItem.__init__(self, None)
-
-    @property
-    def visible_text(self):
-        return f"Counter {self.counter}"
-
-    def on_click(self, select=True):
-        if select:
-            self.counter += 1
-        else:
-            self.counter -= 1
-
-
-class IpMenuItem(MenuItem):
-    def __init__(self):
-        MenuItem.__init__(self, None)
-
-    @property
-    def visible_text(self):
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 80))
-            return str(s.getsockname()[0])
-        except Exception:
-            return "Get IP error"
-
-
-class ProgramFlashMenuItem(MenuItem):
-    def __init__(self, file_name, proxy):
-        self.file_name = file_name
-        self.proxy = proxy
-        MenuItem.__init__(self, file_name)
-
-    def on_click(self, select=True):
-        self.proxy.start_async(
-            "flash", {"board": "rp2040.cfg", "target": self.file_name}
-        )
 
 
 class GetBoardsResponder(protocol.OnGetBoards):
@@ -127,21 +73,17 @@ class PutBoardsResponder(protocol.OnPutBoards):
 
 class FlashRequestResponder(protocol.OnFlashRequest):
 
-    def __init__(self):
-        fs = FlashService()
-        request_handler = RequestHandler.serve(fs)
-        self.proxy = Proxy.serve(request_handler)
+    def __init__(self, proxy):
+
+        self.proxy = proxy
     def on_request(self, request) -> Future[str]:
-        args = {"board": request.board, "target": request.firmware}
+        args = {"board": request.board.name, "target": request.firmware.name}
         future: Future[str] = self.proxy.start_async("flash", args)
         return future
 
 class MobileClient(IConnectionClient):
 
-    def __init__(self, transport: ITransportBuilder, file_store: FileStore, file_repository: ConfigFilesRepository):
-
-        boards_service = BoardsService(file_repository)
-        firmware_service = FirmwareService(file_repository)
+    def __init__(self, transport: ITransportBuilder, file_store: FileStore, boards_service: BoardsService, firmware_service: FirmwareService, proxy: Proxy):
 
         self._router = RequestRouter(
             GetBoardsResponder(boards_service),
@@ -149,7 +91,7 @@ class MobileClient(IConnectionClient):
             GetFirmwareResponder(firmware_service),
             PutFirmwareResponder(firmware_service),
             PutBoardsResponder(boards_service),
-            FlashRequestResponder(),
+            FlashRequestResponder(proxy),
             client=self
         )
 
@@ -171,17 +113,21 @@ class MobileClient(IConnectionClient):
 
 class ListenerClient(IListenerClient):
 
-    def __init__(self):
+    def __init__(self, proxy: Proxy, boards_service: BoardsService, firmware_service: FirmwareService):
         self._clients: List[MobileClient] = []
         self._file_store = FileStore()
-        self._config_files_repository = ConfigFilesRepository()
+        self.boards_service = boards_service
+        self.firmware_service = firmware_service
+        self.proxy = proxy
 
     def on_connect(self, transport_builder: ITransportBuilder):
         logging.info("on_connect():")
         self._clients.append(MobileClient(
             transport_builder,
             self._file_store,
-            self._config_files_repository
+            self.boards_service,
+            self.firmware_service,
+            self.proxy
         ))
 
 
@@ -190,32 +136,28 @@ def main():
     request_handler = RequestHandler.serve(fs)
     proxy = Proxy.serve(request_handler)
 
-    listener = BluetoothListener(ListenerClient())
+    file_repository = ConfigFilesRepository()
+    boards_service = BoardsService(file_repository)
+    firmware_service = FirmwareService(file_repository)
+
+    listener = BluetoothListener(ListenerClient(proxy, boards_service, firmware_service))
     listener.listen()
+
+    menu = Menu(proxy, boards_service, firmware_service)
 
     disp = Adafruit_SSD1306.SSD1306_128_32(rst=24)
     btn_select = Button(26, pull_up=True)
     btn_down = Button(19, pull_up=True)
     btn_up = Button(13, pull_up=True)
     btn_back = Button(6, pull_up=True)
+    btn_next = Button(0, pull_up=True)
 
-    menu_items = [
-        TimeMenuItem(),
-        PairDialog(),
-        IpMenuItem(),
-        CounterMenuItem(),
-        MenuItem("1 button"),
-    ]
-
-    for file_name in get_files()["binary"]:
-        menu_items.append(ProgramFlashMenuItem(file_name, proxy))
-
-    menu = Menu(menu_items)
 
     btn_up.when_pressed = menu.on_up_btn
     btn_down.when_pressed = menu.on_down_btn
     btn_select.when_pressed = menu.on_select_btn
     btn_back.when_pressed = menu.on_back_btn
+    btn_next.when_pressed = menu.on_next_btn
     disp.begin()
     disp.clear()
     disp.display()

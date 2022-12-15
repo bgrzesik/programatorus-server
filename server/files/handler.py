@@ -3,6 +3,7 @@ from concurrent.futures import Future
 
 from ..actor import Actor
 from ..comm.protocol import OnFileUpload, FileUpload
+from ..target.constants import FIRMWARE_PATH
 
 
 # NOTE(bgrzesik): Maybe changing this to Actor would solve blocking
@@ -11,8 +12,8 @@ class UploadedFile(object):
 
     def __init__(self, name, rw=False):
         logging.debug(f"UploadedFile(): name={name} rw={rw}")
-        self._name = name
-        self._file = open(name, "wb" if rw else "r")
+        self._name = f"{FIRMWARE_PATH}/{name}"
+        self._file = open(self._name, "wb" if rw else "r")
         self._next_part = 0
 
     def append_part(self, part: FileUpload.Part) -> FileUpload.Result:
