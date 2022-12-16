@@ -8,6 +8,7 @@ import logging
 
 from concurrent.futures import Future
 from abc import ABC, abstractmethod
+from enum import Enum
 
 from ..actor import Actor
 from ..comm.protocol import DebuggerLine, SendDebuggerLine, DebuggerStart, \
@@ -16,14 +17,6 @@ from ..comm.session.session import Session
 
 
 class DebuggerClient(ABC):
-
-    @abstractmethod
-    def on_started(self):
-        pass
-
-    @abstractmethod
-    def on_stopped(self):
-        pass
 
     @abstractmethod
     def on_line(self, line):
@@ -56,7 +49,7 @@ class Debugger(Actor):
         openocd_cmd = "openocd " \
             "-c 'gdb_port pipe'" \
             "-f interface/raspberrypi-swd.cfg" \
-            f"-f {self._board}"
+            f"-f target/{self._board}"
 
         self._gdb = subprocess.Popen(
             args=[
@@ -81,8 +74,6 @@ class Debugger(Actor):
         self._poller = threading.Thread(target=self._poller_thread)
         self._poller.start()
 
-        self._client.on_started()
-
     @Actor.handler(guarded=True)
     def send_command(self, command: str):
         assert self._gdb is not None
@@ -105,8 +96,6 @@ class Debugger(Actor):
 
         self._gdb.kill()
         self._gdb = None
-
-        self._client.on_stopped()
 
     @Actor.handler()
     def _read_line(self, stream: io.BytesIO):
@@ -141,30 +130,54 @@ class DebuggerService(Actor):
     def __init__(self, session_cb):
         self._session_cb: typing.Callable[[int], Session] = session_cb
         self._debuggers: typing.Dict[int, Debugger] = {}
-        self._start_requests: typing.Dict[int, Future] = {}
-        self._stop_requests: typing.Dict[int, Future] = {}
+        self._next_session_id = 1
 
-    def start(self, start: DebuggerStart):
+    def start(self, start: DebuggerStart) -> Future[int]:
         logging.debug(f"start(): start={start}")
-        # TODO impl
+        session_id = self._next_session_id
 
-    def stop(self, session_id: int):
+        self._next_session_id += 1
+
+        debugger = Debugger(DebuggerService.Client(self, session_id),
+                            start.firmware, start.target)
+
+        self._debuggers[session_id] = debugger
+
+        fut: Future[int] = Future()
+
+        def on_started(future: Future[None]):
+            nonlocal fut, session_id
+
+            if future.cancelled():
+                fut.cancel()
+            elif future.exception() is not None:
+                fut.set_exception(future.exception())
+            else:
+                fut.set_result(session_id)
+
+        debugger.start().add_done_callback(on_started)
+
+        return fut
+
+    def stop(self, session_id: int) -> Future[None]:
         logging.debug(f"stop(): session_id={session_id}")
-        # TODO impl
 
-    def send_line(self, line: DebuggerLine):
+        if session_id in self._debuggers:
+            return self._debuggers[session_id].stop()
+
+        fut: Future[None] = Future()
+        fut.set_exception(IndexError())
+        return fut
+
+    def send_line(self, line: DebuggerLine) -> Future[None]:
         logging.debug(f"send_line(): line={line}")
-        # TODO impl
 
-    @Actor.handler()
-    def _on_started(self, session_id):
-        logging.debug(f"_on_started(): session_id={session_id}")
-        # TODO impl
+        if line.session_id in self._debuggers:
+            return self._debuggers[line.session_id].send_command(line.line)
 
-    @Actor.handler()
-    def _on_stopped(self, session_id):
-        logging.debug(f"_on_stopped(): session_id={session_id}")
-        # TODO impl
+        fut: Future[None] = Future()
+        fut.set_exception(IndexError())
+        return fut
 
     @Actor.handler()
     def _on_line(self, session_id: int, ordinal, line):
@@ -179,12 +192,6 @@ class DebuggerService(Actor):
             self._service: DebuggerService = service
             self._session_id: int = session_id
             self._ordinal = 0
-
-        def on_started(self):
-            self._service._on_started(self._session_id)
-
-        def on_stopped(self):
-            self._service._on_stopped(self._session_id)
 
         def on_line(self, line):
             self._ordinal += 1
