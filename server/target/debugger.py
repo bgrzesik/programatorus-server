@@ -196,30 +196,3 @@ class DebuggerService(Actor):
         def on_line(self, line):
             self._ordinal += 1
             self._service._on_line(self._session_id, self._ordinal, line)
-
-
-class ServiceOnDebuggerStart(OnDebuggerStart):
-
-    def __init__(self, service: DebuggerService):
-        self._service = service
-
-    def on_request(self, request: DebuggerStart) -> Future[int]:
-        return self._service.start(request)
-
-
-class ServiceOnDebuggerStop(OnDebuggerStop):
-
-    def __init__(self, service: DebuggerService):
-        self._service = service
-
-    def on_request(self, request: int) -> Future[None]:
-        return self._service.stop(request)
-
-
-class ServiceOnDebuggerLine(OnDebuggerLine):
-
-    def __init__(self, service: DebuggerService):
-        self._service = service
-
-    def on_request(self, request: DebuggerLine) -> Future[None]:
-        return self._service.send_line(request)

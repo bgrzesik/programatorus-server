@@ -1,6 +1,6 @@
 import logging
 import socket
-from typing import List
+from typing import List, Dict
 from datetime import datetime
 from concurrent.futures import Future
 
@@ -11,6 +11,7 @@ from PIL import ImageDraw, Image
 from server.comm.protocol import BoardsData, FirmwareData
 from server.target.config_repository import ConfigFilesRepository, BoardsService, FirmwareService
 from server.target.request_handler import Proxy, RequestHandler
+from server.target.debugger import DebuggerService
 from server.target.flash import FlashService
 from server.ui.menu import Menu
 from server.comm import protocol
@@ -81,9 +82,39 @@ class FlashRequestResponder(protocol.OnFlashRequest):
         future: Future[str] = self.proxy.start_async("flash", args)
         return future
 
+class ServiceOnDebuggerStart(protocol.OnDebuggerStart):
+
+    def __init__(self, service: DebuggerService):
+        self._service = service
+
+    def on_request(self, request: protocol.DebuggerStart) -> Future[int]:
+        return self._service.start(request)
+
+
+class ServiceOnDebuggerStop(protocol.OnDebuggerStop):
+
+    def __init__(self, service: DebuggerService):
+        self._service = service
+
+    def on_request(self, request: int) -> Future[None]:
+        return self._service.stop(request)
+
+
+class ServiceOnDebuggerLine(protocol.OnDebuggerLine):
+
+    def __init__(self, service: DebuggerService):
+        self._service = service
+
+    def on_request(self, request: protocol.DebuggerLine) -> Future[None]:
+        return self._service.send_line(request)
+
+
 class MobileClient(IConnectionClient):
 
-    def __init__(self, transport: ITransportBuilder, file_store: FileStore, boards_service: BoardsService, firmware_service: FirmwareService, proxy: Proxy):
+    def __init__(self, session_id: int, transport: ITransportBuilder,
+                 file_store: FileStore, boards_service: BoardsService,
+                 firmware_service: FirmwareService, proxy: Proxy,
+                 debugger_service: DebuggerService):
 
         self._router = RequestRouter(
             GetBoardsResponder(boards_service),
@@ -92,6 +123,9 @@ class MobileClient(IConnectionClient):
             PutFirmwareResponder(firmware_service),
             PutBoardsResponder(boards_service),
             FlashRequestResponder(proxy),
+            ServiceOnDebuggerStart(debugger_service),
+            ServiceOnDebuggerStop(debugger_service),
+            ServiceOnDebuggerLine(debugger_service),
             client=self
         )
 
@@ -99,10 +133,15 @@ class MobileClient(IConnectionClient):
             messenger=Messenger.Builder(
                 messenger=ProtocolMessenger.Builder(
                     transport=transport)
-            )
+            ),
+            session_id=session_id
         ).build(self._router)
 
         self._session.reconnect()
+
+    @property
+    def session(self) -> Session:
+        return self._session
 
     def on_error(self):
         pass
@@ -113,22 +152,35 @@ class MobileClient(IConnectionClient):
 
 class ListenerClient(IListenerClient):
 
-    def __init__(self, proxy: Proxy, boards_service: BoardsService, firmware_service: FirmwareService):
+    def __init__(self, sessions: Dict[int, Session], proxy: Proxy,
+                 boards_service: BoardsService,
+                 firmware_service: FirmwareService,
+                 debugger_service: DebuggerService):
         self._clients: List[MobileClient] = []
         self._file_store = FileStore()
         self.boards_service = boards_service
         self.firmware_service = firmware_service
+        self._debugger_service = debugger_service
         self.proxy = proxy
+        self._sessions_mapping = sessions
+        self._next_session_id = 0
 
     def on_connect(self, transport_builder: ITransportBuilder):
         logging.info("on_connect():")
-        self._clients.append(MobileClient(
+        session_id = self._next_session_id
+        client = MobileClient(
+            session_id,
             transport_builder,
             self._file_store,
             self.boards_service,
             self.firmware_service,
-            self.proxy
-        ))
+            self.proxy,
+            self._debugger_service,
+        )
+        self._next_session_id += 1
+        session: Session = client.session
+        self._clients.append(client)
+        self._sessions_mapping[session_id] = session
 
 
 def main():
@@ -136,11 +188,18 @@ def main():
     request_handler = RequestHandler.serve(fs)
     proxy = Proxy.serve(request_handler)
 
+    sessions: Dict[int, Session] = {}
+
     file_repository = ConfigFilesRepository()
     boards_service = BoardsService(file_repository)
     firmware_service = FirmwareService(file_repository)
 
-    listener = BluetoothListener(ListenerClient(proxy, boards_service, firmware_service))
+    debugger_service = DebuggerService(sessions.get)
+
+    listener_client = ListenerClient(sessions, proxy, boards_service,
+                                     firmware_service, debugger_service)
+
+    listener = BluetoothListener(listener_client)
     listener.listen()
 
     menu = Menu(proxy, boards_service, firmware_service)
@@ -175,7 +234,19 @@ def main():
 
 if __name__ == "__main__":
     import sys
-    logging.basicConfig(stream=sys.stdout, level=logging.ERROR,
-                        format="%(asctime)s,%(msecs)d %(levelname)-8s "
-                        "[%(filename)s:%(lineno)d] %(message)s")
+    if "--syslog" in sys.argv:
+        from logging.handlers import SysLogHandler
+
+        logging.basicConfig(handlers=[SysLogHandler(address="/dev/log")],
+                            level=logging.DEBUG,
+                            format="%(levelname)-8s [%(filename)s:%(lineno)d] "
+                            "%(message)s")
+    else:
+        logging.basicConfig(stream=sys.stdout, level=logging.DEBUG,
+                            format="%(asctime)s,%(msecs)d %(levelname)-8s "
+                            "[%(filename)s:%(lineno)d] %(message)s")
+
+    logging.getLogger("Adafruit_SSD1306").setLevel(logging.ERROR)
+    logging.getLogger("Adafruit_GPIO").setLevel(logging.ERROR)
+    logging.getLogger("Adafruit_I2C").setLevel(logging.ERROR)
     main()
