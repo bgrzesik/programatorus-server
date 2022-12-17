@@ -21,7 +21,11 @@ from ..presentation.messenger import (
     IOutgoingMessage,
     IMessengerBuilder,
 )
-from ..presentation.protocol_pb2 import GenericMessage, ErrorMessage
+from ..presentation.protocol_pb2 import (
+    GenericMessage,
+    ErrorMessage,
+    SetSessionId
+)
 
 
 class ISession(IConnection, ABC):
@@ -52,10 +56,11 @@ class Session(ISession, Actor):
     TIMEOUT_S = 32 * HEARTBEAT_S
 
     def __init__(self, messenger_builder: IMessengerBuilder,
+                 session_id: int,
                  client: ISessionClient,
                  runner: Optional[Runner] = None):
         Actor.__init__(self, runner=runner)
-        self.session_id: Optional[int] = None
+        self.session_id: Optional[int] = session_id
         self._posted_heartbeat: Optional[Future[GenericMessage]] = None
         self._last_transfer = time.monotonic()
         self.waiting_for_response: Dict[int, Session.PendingMessage] = {}
@@ -101,11 +106,6 @@ class Session(ISession, Actor):
             f"_process_control_requests(): {message.WhichOneof('payload')}")
 
         if message.WhichOneof("payload") == "heartbeat":
-            return GenericMessage(ok=EmptyProto())
-        elif message.WhichOneof("payload") == "setSessionId":
-            self.session_id = message.setSessionId.sessionId
-            logging.debug("_process_control_requests(): Setting "
-                          f"sessionId=${self.session_id}")
             return GenericMessage(ok=EmptyProto())
         else:
             return None
@@ -214,6 +214,7 @@ class Session(ISession, Actor):
             Actor.__init__(self, parent=session)
             self._session: Session = session
             self._client: ISessionClient = client
+            self._first_connection = True
 
         @Actor.assert_executor()
         def _on_response(self, response: GenericMessage):
@@ -298,6 +299,15 @@ class Session(ISession, Actor):
         def on_state_changed(self, state: ConnectionState):
             if state == ConnectionState.CONNECTED:
                 self._session.update_last_transfer()
+                if self._first_connection:
+                    self._first_connection = False
+                    self._session.request(
+                        GenericMessage(
+                            setSessionId=SetSessionId(
+                                sessionId=self._session.session_id
+                            )
+                        )
+                    )
 
             self._client.on_state_changed(state)
 
@@ -306,13 +316,14 @@ class Session(ISession, Actor):
             self._client.on_error()
 
     class Builder(ISessionBuilder):
-        def __init__(self, messenger=None, runner=None):
+        def __init__(self, messenger=None, session_id=None, runner=None):
             super().__init__(runner=runner)
             self._messenger: IMessengerBuilder = messenger
+            self._session_id: int = session_id
 
         def set_messenger(self, messenger: IMessengerBuilder):
             self._messenger = messenger
 
         def construct(self, client: ISessionClient,
                       runner: Optional[Runner] = None):
-            return Session(self._messenger, client, runner)
+            return Session(self._messenger, self._session_id, client, runner)
