@@ -152,7 +152,7 @@ class ProgramFlashMenuItem(MenuItem):
         elif self.state == 'PROMPT':
             return [
             "Flash device using",
-            "with files below   (x)"
+            "files below    submit (x)"
         ]
         elif self.state == 'AWAIT':
             return [
@@ -162,12 +162,12 @@ class ProgramFlashMenuItem(MenuItem):
         elif self.state == 'SUCCESS':
             return [
             "Finished with success",
-            "                   (x)"
+            "                   OK (x)"
         ]
         else:
             return [
             "Finished with failure",
-            "                   (x)"
+            "                   OK (x)"
         ]
 
 
@@ -198,7 +198,7 @@ class ChoooseBoardMenuItem(MenuItem):
     def visible_text(self):
         return [
             f"< {self.chosen} >",
-            f"{'[fav]       all ' if self.state==FAV else ' fav       [all]' }"
+            f"{'[fav]      all    swap(x)' if self.state == FAV else ' fav      [all]   swap(x)'}"
         ] if self.is_selected else [f"board: {self.chosen}"]
     def on_next(self):
         self.indices[self.state] += 1
@@ -247,7 +247,7 @@ class ChoooseFirmwareMenuItem(MenuItem):
     def visible_text(self):
         return [
             f"< {self.chosen} >",
-            f"{'[fav]       all ' if self.state == FAV else ' fav       [all]'}"
+            f"{'[fav]      all    swap(x)' if self.state == FAV else ' fav      [all]   swap(x)'}"
         ] if self.is_selected else [f"binary: {self.chosen}"]
 
     def on_next(self):

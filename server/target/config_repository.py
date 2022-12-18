@@ -11,6 +11,7 @@ FAV_FIRMWARE = 'fav_firmware'
 def extract_filename(path: str):
     return path.split("/")[-1]
 
+
 class ConfigFilesRepository():
 
     def __init__(self):
@@ -67,8 +68,8 @@ class BoardsService(object):
         fav_set = set(fav)
 
         return BoardsData(
-            all=list(map(lambda s: Board(s, s in fav_set),  self.repository.get_all_boards())),
-            favorites=list(map(lambda s: Board(s, True),  fav)),
+            all=list(map(lambda s: Board(s, s in fav_set), self.repository.get_all_boards())),
+            favorites=list(map(lambda s: Board(s, True), fav)),
         )
 
     def put(self, data: BoardsData):
@@ -84,11 +85,21 @@ class FirmwareService(object):
     def get(self) -> FirmwareData:
         fav = self.repository.get_fav_firmwares()
         fav_set = set(fav)
+        all = self.repository.get_all_firmwares()
+        all_set = set(all)
 
         return FirmwareData(
-            all=list(map(lambda s: Firmware(s, s in fav_set), self.repository.get_all_firmwares())),
-            favorites=list(map(lambda s: Firmware(s, True), fav)),
+            all=list(map(lambda s: Firmware(s, s in fav_set), all)),
+            favorites=list(
+                map(lambda s: Firmware(s, True),
+                    filter(lambda it: it in all_set, fav)))
         )
 
     def put(self, data: FirmwareData):
-        self.repository.set_fav_firmwares(list(map(lambda x: x.name, data.favorites)))
+        all = self.repository.get_all_firmwares()
+        all_set = set(all)
+        self.repository.set_fav_firmwares(
+            list(
+                filter(lambda it: it in all_set,
+                       map(lambda x: x.name, data.favorites)))
+        )
