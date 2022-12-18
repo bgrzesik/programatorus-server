@@ -145,6 +145,10 @@ message DebuggerLine {
   string line = 3;
 }
 
+message DeleteFile {
+  string name = 1;
+}
+
 message GenericMessage {
   uint64 sessionId = 1;
 
@@ -187,6 +191,8 @@ message GenericMessage {
 
     DebuggerLine debuggerLine = 207;
     // Response: Ok(102)
+
+    DeleteFile deleteFile = 208;
 
     TestMessage test = 301;
     ErrorMessage error = 302;

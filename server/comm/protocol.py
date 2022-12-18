@@ -125,6 +125,20 @@ class OnFlashRequest(IResponder[FlashRequest, str]):
             )
         )
 
+class OnDeleteFile(IResponder[str, None]):
+
+    @property
+    def request_payload(self) -> str:
+        return "deleteFile"
+
+    def unpack_request(self, request: pb.GenericMessage) -> str:
+        return request.deleteFile.name
+
+    def prepare_response(self, response: str) -> pb.GenericMessage:
+        return pb.GenericMessage(
+            ok=empty_pb2.Empty()
+        )
+
 @dataclass
 class DeviceStatus(object):
     class Status(IntEnum):

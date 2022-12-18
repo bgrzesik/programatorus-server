@@ -1,8 +1,9 @@
 import logging
 import socket
+import os
 from typing import List, Dict
 from datetime import datetime
-from concurrent.futures import Future
+from concurrent.futures import Future, ThreadPoolExecutor
 
 import Adafruit_SSD1306
 from gpiozero import Button
@@ -10,6 +11,7 @@ from PIL import ImageDraw, Image
 
 from server.comm.protocol import BoardsData, FirmwareData
 from server.target.config_repository import ConfigFilesRepository, BoardsService, FirmwareService
+from server.target.constants import FIRMWARE_PATH
 from server.target.request_handler import Proxy, RequestHandler
 from server.target.debugger import DebuggerService
 from server.target.flash import FlashService
@@ -75,8 +77,8 @@ class PutBoardsResponder(protocol.OnPutBoards):
 class FlashRequestResponder(protocol.OnFlashRequest):
 
     def __init__(self, proxy):
-
         self.proxy = proxy
+
     def on_request(self, request) -> Future[str]:
         args = {"board": request.board.name, "target": request.firmware.name}
         future: Future[str] = self.proxy.start_async("flash", args)
@@ -108,6 +110,13 @@ class ServiceOnDebuggerLine(protocol.OnDebuggerLine):
     def on_request(self, request: protocol.DebuggerLine) -> Future[None]:
         return self._service.send_line(request)
 
+class DeleteFileHandler(protocol.OnDeleteFile):
+
+    def on_request(self, file_name: str) -> Future[None]:
+        with ThreadPoolExecutor() as executor:
+            future = executor.submit(os.remove, f"{FIRMWARE_PATH}/{file_name}")
+            return future
+
 
 class MobileClient(IConnectionClient):
 
@@ -126,6 +135,7 @@ class MobileClient(IConnectionClient):
             ServiceOnDebuggerStart(debugger_service),
             ServiceOnDebuggerStop(debugger_service),
             ServiceOnDebuggerLine(debugger_service),
+            DeleteFileHandler(),
             client=self
         )
 
