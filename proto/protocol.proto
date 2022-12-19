@@ -193,6 +193,7 @@ message GenericMessage {
     // Response: Ok(102)
 
     DeleteFile deleteFile = 208;
+     // Response: Ok(102)
 
     TestMessage test = 301;
     ErrorMessage error = 302;
