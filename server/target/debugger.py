@@ -44,6 +44,7 @@ class Debugger(Actor):
 
     @Actor.handler(guarded=True)
     def start(self):
+        logging.debug(f"start()")
         assert self._poller is None and self._gdb is None
 
         openocd_cmd = "openocd " \
@@ -76,12 +77,14 @@ class Debugger(Actor):
 
     @Actor.handler(guarded=True)
     def send_command(self, command: str):
+        logging.debug(f"send_command(): {command}")
         assert self._gdb is not None
         self._gdb.stdin.writelines([command.encode("utf-8")])
         self._gdb.stdin.flush()
 
     @Actor.handler(guarded=True)
     def stop(self):
+        logging.debug("stop()")
         assert self._poller is not None and self._gdb is not None
         self._is_running = False
         self._notify_poller()
@@ -107,6 +110,7 @@ class Debugger(Actor):
             while True:
                 line = stream.readline()
                 if line:
+                    logging.debug(f"_read_line(): line={line}")
                     self._client.on_line(line)
                 else:
                     break
@@ -130,13 +134,10 @@ class DebuggerService(Actor):
     def __init__(self, session_cb):
         self._session_cb: typing.Callable[[int], Session] = session_cb
         self._debuggers: typing.Dict[int, Debugger] = {}
-        self._next_session_id = 1
 
     def start(self, start: DebuggerStart) -> Future[int]:
         logging.debug(f"start(): start={start}")
-        session_id = self._next_session_id
-
-        self._next_session_id += 1
+        session_id = start.session_id
 
         debugger = Debugger(DebuggerService.Client(self, session_id),
                             start.firmware, start.target)
@@ -179,9 +180,11 @@ class DebuggerService(Actor):
         fut.set_exception(IndexError())
         return fut
 
-    @Actor.handler()
     def _on_line(self, session_id: int, ordinal, line):
+        logging.debug(f"_on_line(): session_id={session_id} line={line}")
         session = self._session_cb(session_id)
+
+        logging.debug(f"_on_line(): session={session}")
 
         SendDebuggerLine(DebuggerLine(session_id, ordinal, line)) \
             .request(session)
