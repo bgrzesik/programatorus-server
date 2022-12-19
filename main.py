@@ -112,10 +112,12 @@ class ServiceOnDebuggerLine(protocol.OnDebuggerLine):
 
 class DeleteFileHandler(protocol.OnDeleteFile):
 
+    def __init__(self):
+        self._executor = ThreadPoolExecutor()
+
     def on_request(self, file_name: str) -> Future[None]:
-        with ThreadPoolExecutor() as executor:
-            future = executor.submit(os.remove, f"{FIRMWARE_PATH}/{file_name}")
-            return future
+        future = self._executor.submit(os.remove, f"{FIRMWARE_PATH}/{file_name}")
+        return future
 
 
 class MobileClient(IConnectionClient):

@@ -319,7 +319,7 @@ class OnDebuggerLine(IResponder[DebuggerLine, None]):
 
     @property
     def request_payload(self) -> str:
-        return "debuggerStop"
+        return "debuggerLine"
 
     def unpack_request(self, request: pb.GenericMessage) -> DebuggerLine:
         session_id = request.sessionId
