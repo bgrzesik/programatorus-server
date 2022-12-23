@@ -10,7 +10,7 @@ from concurrent.futures import Future
 from abc import ABC, abstractmethod
 from enum import Enum
 
-from ..actor import Actor
+from ..tasker import Tasker
 from ..comm.protocol import DebuggerLine, SendDebuggerLine, DebuggerStart, \
                             OnDebuggerStart, OnDebuggerLine, OnDebuggerStop
 from ..comm.session.session import Session
@@ -23,7 +23,7 @@ class DebuggerClient(ABC):
         pass
 
 
-class Debugger(Actor):
+class Debugger(Tasker):
 
     def __init__(self, client, firmware, board):
         super().__init__()
@@ -42,7 +42,7 @@ class Debugger(Actor):
 
         self._client: DebuggerClient = client
 
-    @Actor.handler(guarded=True)
+    @Tasker.handler(guarded=True)
     def start(self):
         logging.debug(f"start()")
         assert self._poller is None and self._gdb is None
@@ -75,14 +75,14 @@ class Debugger(Actor):
         self._poller = threading.Thread(target=self._poller_thread)
         self._poller.start()
 
-    @Actor.handler(guarded=True)
+    @Tasker.handler(guarded=True)
     def send_command(self, command: str):
         logging.debug(f"send_command(): {command}")
         assert self._gdb is not None
         self._gdb.stdin.writelines([command.encode("utf-8")])
         self._gdb.stdin.flush()
 
-    @Actor.handler(guarded=True)
+    @Tasker.handler(guarded=True)
     def stop(self):
         logging.debug("stop()")
         assert self._poller is not None and self._gdb is not None
@@ -100,7 +100,7 @@ class Debugger(Actor):
         self._gdb.kill()
         self._gdb = None
 
-    @Actor.handler()
+    @Tasker.handler()
     def _read_line(self, stream: io.BytesIO):
         if self._gdb.poll() is not None:
             self.stop()
@@ -129,7 +129,7 @@ class Debugger(Actor):
                     self._read_line(self._gdb.stderr)
 
 
-class DebuggerService(Actor):
+class DebuggerService(Tasker):
 
     def __init__(self, session_cb):
         self._session_cb: typing.Callable[[int], Session] = session_cb

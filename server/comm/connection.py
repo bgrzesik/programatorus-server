@@ -2,7 +2,7 @@ import enum
 import logging
 from abc import ABC, abstractmethod
 
-from ..actor import Runner
+from ..tasker import Runner
 
 
 class ConnectionState(enum.Enum):

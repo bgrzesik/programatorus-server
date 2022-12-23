@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from concurrent.futures import Future
 from typing import List, Optional, Tuple
 
-from ...actor import Actor, Runner
+from ...tasker import Tasker, Runner
 from ..connection import (
     IConnection,
     IConnectionClient,
@@ -54,20 +54,20 @@ class ITransportClient(IConnectionClient, ABC):
         raise NotImplementedError
 
 
-class ProxyTransportClient(ITransportClient, Actor):
+class ProxyTransportClient(ITransportClient, Tasker):
     def __init__(self, impl, parent=None, runner=None):
         super().__init__(parent=parent, runner=runner)
         self.impl: ITransportClient = impl
 
-    @Actor.handler()
+    @Tasker.handler()
     def on_packet_received(self, packet: bytes):
         self.impl.on_packet_received(packet)
 
-    @Actor.handler()
+    @Tasker.handler()
     def on_state_changed(self, state: ConnectionState):
         self.impl.on_state_changed(state)
 
-    @Actor.handler()
+    @Tasker.handler()
     def on_error(self):
         self.impl.on_error()
 
@@ -89,11 +89,11 @@ class ITransportBuilder(IConnectionBuilder, ABC):
         return self.construct(client, runner or self.runner)
 
 
-class Transport(ITransport, AbstractConnection, Actor):
+class Transport(ITransport, AbstractConnection, Tasker):
     def __init__(self, transport_builder: ITransportBuilder,
                  client: ITransportClient,
                  runner: Optional[Runner] = None):
-        Actor.__init__(self, runner=runner)
+        Tasker.__init__(self, runner=runner)
         client = Transport.Client(self, client)
         AbstractConnection.__init__(self, client)
         self._client = client
@@ -122,7 +122,7 @@ class Transport(ITransport, AbstractConnection, Actor):
 
         return outgoing
 
-    @Actor.handler(guarded=True)
+    @Tasker.handler(guarded=True)
     def reconnect(self):
         logging.debug("reconnect():")
         if self._been_connected and not self.supports_reconnecting:
@@ -134,7 +134,7 @@ class Transport(ITransport, AbstractConnection, Actor):
 
         self._impl.reconnect()
 
-    @Actor.handler(guarded=True)
+    @Tasker.handler(guarded=True)
     def disconnect(self):
         logging.debug("disconnect():")
         if self.state != ConnectionState.CONNECTED:
@@ -144,7 +144,7 @@ class Transport(ITransport, AbstractConnection, Actor):
 
         self._impl.disconnect()
 
-    @Actor.handler(guarded=True, force_schedule=True)
+    @Tasker.handler(guarded=True, force_schedule=True)
     def transport_task(self):
         state = self.state
         logging.debug(f"transport_task(): state={state}")
@@ -173,7 +173,7 @@ class Transport(ITransport, AbstractConnection, Actor):
         else:
             assert False
 
-    @Actor.assert_executor()
+    @Tasker.assert_executor()
     def pump_pending_packets(self):
         logging.debug("pump_pending_packets(): "
                       f"pending_count={len(self.pending_packets)}")
@@ -240,18 +240,18 @@ class Transport(ITransport, AbstractConnection, Actor):
                     self._transport.pending_packets.pop(0)
                     self.future.set_exception(exception)
 
-    class Client(ITransportClient, Actor):
+    class Client(ITransportClient, Tasker):
         def __init__(self, transport, client):
             super().__init__(parent=transport)
             self.transport: Transport = transport
             self.last_state: Optional[ConnectionState] = None
             self.client = client
 
-        @Actor.handler()
+        @Tasker.handler()
         def on_packet_received(self, packet: bytes):
             self.client.on_packet_received(packet)
 
-        @Actor.handler()
+        @Tasker.handler()
         def on_state_changed(self, state: ConnectionState):
             self.transport.assert_executor()
             if self.last_state == state:
@@ -264,7 +264,7 @@ class Transport(ITransport, AbstractConnection, Actor):
             self.client.on_state_changed(state)
             self.transport.transport_task(timeout=RECONNECT_TIMEOUT)
 
-        @Actor.handler()
+        @Tasker.handler()
         def on_error(self):
             self.transport.error_count += 1
             # TODO(bgrzesik): consider adding if error > MAX_ERROR_COUNT

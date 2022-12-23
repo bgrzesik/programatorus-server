@@ -3,7 +3,7 @@ import socket
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from ...actor import Actor
+from ...tasker import Tasker
 from ..transport.transport import (
     Transport,
     SocketTransport,
@@ -23,17 +23,17 @@ class IListenerClient(ABC):
         raise NotImplementedError
 
 
-class ProxyListenerClient(IListenerClient, Actor):
+class ProxyListenerClient(IListenerClient, Tasker):
     def __init__(self, impl, parent=None, runner=None):
         super().__init__(parent=parent, runner=runner)
         self.impl: IListenerClient = impl
 
-    @Actor.handler()
+    @Tasker.handler()
     def on_connect(self, transport_getter):
         self.impl.on_connect(transport_getter)
 
 
-class SocketListener(IListener, Actor, ABC):
+class SocketListener(IListener, Tasker, ABC):
     def __init__(self, client, wrap_transport=True):
         super().__init__()
         self._client: IListenerClient = client
@@ -53,7 +53,7 @@ class SocketListener(IListener, Actor, ABC):
         else:
             return socket_builder
 
-    @Actor.handler()
+    @Tasker.handler()
     def listen(self):
         try:
             logging.info("listen():")

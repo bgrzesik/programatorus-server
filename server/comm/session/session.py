@@ -8,7 +8,7 @@ from typing import Optional, List, Dict
 
 from google.protobuf.empty_pb2 import Empty as EmptyProto
 
-from ...actor import Actor, Runner
+from ...tasker import Tasker, Runner
 from ..connection import (
     IConnection,
     IConnectionClient,
@@ -51,7 +51,7 @@ class ISessionBuilder(IConnectionBuilder, ABC):
         return self.construct(client, runner or self.runner)
 
 
-class Session(ISession, Actor):
+class Session(ISession, Tasker):
     HEARTBEAT_S = 0.5
     TIMEOUT_S = 32 * HEARTBEAT_S
 
@@ -59,7 +59,7 @@ class Session(ISession, Actor):
                  session_id: int,
                  client: ISessionClient,
                  runner: Optional[Runner] = None):
-        Actor.__init__(self, runner=runner)
+        Tasker.__init__(self, runner=runner)
         self.session_id: Optional[int] = session_id
         self._posted_heartbeat: Optional[Future[GenericMessage]] = None
         self._last_transfer = time.monotonic()
@@ -90,15 +90,15 @@ class Session(ISession, Actor):
 
         return pending.future
 
-    @Actor.handler()
+    @Tasker.handler()
     def reconnect(self):
         self._messenger.reconnect()
 
-    @Actor.handler()
+    @Tasker.handler()
     def disconnect(self):
         self._messenger.disconnect()
 
-    @Actor.assert_executor()
+    @Tasker.assert_executor()
     def process_control_requests(
         self, message: GenericMessage
     ) -> Optional[GenericMessage]:
@@ -110,7 +110,7 @@ class Session(ISession, Actor):
         else:
             return None
 
-    @Actor.handler()
+    @Tasker.handler()
     def _pump_messages(self):
         logging.debug("_pump_messages(): ")
         while self._queue:
@@ -123,7 +123,7 @@ class Session(ISession, Actor):
             outgoing = self._messenger.send(pending.message)
             pending.set_outgoing_message(outgoing)
 
-    @Actor.handler(force_schedule=True, guarded=True)
+    @Tasker.handler(force_schedule=True, guarded=True)
     def timeout_session(self):
         if self.state != ConnectionState.CONNECTED:
             return
@@ -149,13 +149,13 @@ class Session(ISession, Actor):
         self._posted_heartbeat = self.request(
             GenericMessage(heartbeat=EmptyProto()))
 
-    @Actor.handler()
+    @Tasker.handler()
     def update_last_transfer(self):
         logging.debug(f"update_last_transfer(): state={self.state}")
         self._last_transfer = time.monotonic()
         self.timeout_session(timeout=Session.HEARTBEAT_S)
 
-    @Actor.handler()
+    @Tasker.handler()
     def on_request_done(self, request_id: int,
                         response: Future[GenericMessage]):
         logging.debug(f"on_request_done(): request_id={request_id}")
@@ -209,16 +209,16 @@ class Session(ISession, Actor):
             if future.exception() is None:
                 self._session.update_last_transfer()
 
-    class Client(IMessageClient, Actor):
+    class Client(IMessageClient, Tasker):
         def __init__(self, session, client):
-            Actor.__init__(self, parent=session)
+            Tasker.__init__(self, parent=session)
             self._session: Session = session
             self._client: ISessionClient = client
             self._first_connection = True
 
-        @Actor.assert_executor()
+        @Tasker.assert_executor()
         def _on_response(self, response: GenericMessage):
-            assert self._session.is_actor_thread()
+            assert self._session.is_tasker_thread()
             logging.debug(f"_on_response(): id={response.response}")
 
             pending = self._session.waiting_for_response.pop(response.response)
@@ -231,9 +231,9 @@ class Session(ISession, Actor):
                 f"_on_response(): Completing request id={response.response}")
             pending.future.set_result(response)
 
-        @Actor.assert_executor()
+        @Tasker.assert_executor()
         def _on_request(self, request: GenericMessage):
-            assert self._session.is_actor_thread()
+            assert self._session.is_tasker_thread()
             logging.debug(
                 f"_on_request(): Received request id={request.request}")
 
@@ -254,7 +254,7 @@ class Session(ISession, Actor):
                     self._session.on_request_done, request.request)
             )
 
-        @Actor.handler()
+        @Tasker.handler()
         def on_message_received(self, message: GenericMessage):
             logging.debug("on_message_received(): "
                           f"message={message.WhichOneof('payload')}")
@@ -278,7 +278,7 @@ class Session(ISession, Actor):
                               f"{self._session.runner.name}"
                               f"{self.runner.name}")
 
-                assert self._session.is_actor_thread()
+                assert self._session.is_tasker_thread()
                 if message.WhichOneof("id") == "request":
                     logging.warning(
                         "on_message_received(): Received a request")
@@ -295,7 +295,7 @@ class Session(ISession, Actor):
             except Exception as exc:
                 logging.error("on_message_received(): ", exc_info=exc)
 
-        @Actor.handler()
+        @Tasker.handler()
         def on_state_changed(self, state: ConnectionState):
             if state == ConnectionState.CONNECTED:
                 self._session.update_last_transfer()
@@ -311,7 +311,7 @@ class Session(ISession, Actor):
 
             self._client.on_state_changed(state)
 
-        @Actor.handler()
+        @Tasker.handler()
         def on_error(self):
             self._client.on_error()
 

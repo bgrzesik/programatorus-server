@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from concurrent.futures import Future
 from typing import Optional
 
-from ...actor import Actor, Runner
+from ...tasker import Tasker, Runner
 from ..connection import (
     IConnection,
     IConnectionClient,
@@ -61,30 +61,30 @@ class IMessengerBuilder(IConnectionBuilder, ABC):
         return self.construct(client, runner or self.runner)
 
 
-class ProxyMessageClient(IMessageClient, Actor):
+class ProxyMessageClient(IMessageClient, Tasker):
     def __init__(self, impl, parent=None, runner=None):
         super(ProxyMessageClient, self).__init__(
             parent=parent, runner=runner)
         self._impl: IMessageClient = impl
 
-    @Actor.handler()
+    @Tasker.handler()
     def on_message_received(self, message: GenericMessage):
         self._impl.on_message_received(message)
 
-    @Actor.handler()
+    @Tasker.handler()
     def on_state_changed(self, state: ConnectionState):
         self._impl.on_state_changed(state)
 
-    @Actor.handler()
+    @Tasker.handler()
     def on_error(self):
         self._impl.on_error()
 
 
-class Messenger(IMessenger, Actor):
+class Messenger(IMessenger, Tasker):
     def __init__(self, messenger_builder: IMessengerBuilder,
                  client: IMessageClient,
                  runner=None):
-        Actor.__init__(self, runner=runner)
+        Tasker.__init__(self, runner=runner)
         client = Messenger.Client(self, client)
         self._impl: IMessenger = messenger_builder.build(client, runner)
 
@@ -92,7 +92,7 @@ class Messenger(IMessenger, Actor):
     def state(self):
         return self._impl.state
 
-    @Actor.handler()
+    @Tasker.handler()
     def _send(self, outgoing: "Messenger.OutgoingMessage"):
         impl = self._impl.send(outgoing.message)
         outgoing.set_outgoing_message(impl)
@@ -102,11 +102,11 @@ class Messenger(IMessenger, Actor):
         self._send(outgoing)
         return outgoing
 
-    @Actor.handler(guarded=True)
+    @Tasker.handler(guarded=True)
     def reconnect(self):
         self._impl.reconnect()
 
-    @Actor.handler(guarded=True)
+    @Tasker.handler(guarded=True)
     def disconnect(self):
         self._impl.disconnect()
 
@@ -143,17 +143,17 @@ class Messenger(IMessenger, Actor):
             else:
                 self.future.set_exception(exception)
 
-    class Client(IMessageClient, Actor):
+    class Client(IMessageClient, Tasker):
         def __init__(self, messenger, client):
             super().__init__(parent=messenger)
             self.client: IMessageClient = client
             self.last_state: Optional[ConnectionState] = None
 
-        @Actor.handler()
+        @Tasker.handler()
         def on_message_received(self, message: GenericMessage):
             self.client.on_message_received(message)
 
-        @Actor.handler()
+        @Tasker.handler()
         def on_state_changed(self, state: ConnectionState):
             if self.last_state == state:
                 logging.debug(
@@ -164,7 +164,7 @@ class Messenger(IMessenger, Actor):
             self.last_state = state
             self.client.on_state_changed(state)
 
-        @Actor.handler()
+        @Tasker.handler()
         def on_error(self):
             self.client.on_error()
 

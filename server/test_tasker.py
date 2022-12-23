@@ -5,10 +5,10 @@ import time
 import unittest
 from queue import Queue, Empty
 
-from .actor import Actor
+from .tasker import Tasker
 
 
-class ActorTests(unittest.TestCase):
+class TaskerTests(unittest.TestCase):
     @staticmethod
     def setUpClass() -> None:
         import sys
@@ -16,7 +16,7 @@ class ActorTests(unittest.TestCase):
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
     def setUp(self) -> None:
-        self.tester = ActorTests.Tester()
+        self.tester = TaskerTests.Tester()
 
     def tearDown(self) -> None:
         queue = self.tester.queue
@@ -108,50 +108,50 @@ class ActorTests(unittest.TestCase):
         for _ in range(amount):
             self.assertIs(value, self.tester.queue.get(timeout=1.0))
 
-    class Tester(Actor):
+    class Tester(Tasker):
         def __init__(self):
             super().__init__()
             self.queue: Queue[str] = Queue()
             self.event = threading.Event()
 
-        @Actor.handler()
+        @Tasker.handler()
         def busy_task(self):
             logging.debug("busy_task():")
             self.event.wait()
             self.event.clear()
 
-        @Actor.handler(guarded=False)
+        @Tasker.handler(guarded=False)
         def not_guarded(self, value):
             logging.debug(f"not_guarded(): value={value}")
             self.queue.put(value)
 
-        @Actor.handler(guarded=True)
+        @Tasker.handler(guarded=True)
         def guarded(self, value):
             logging.debug(f"guarded(): value={value}")
             self.queue.put(value)
 
-        @Actor.assert_executor()
+        @Tasker.assert_executor()
         def asserted(self, value):
             logging.debug(f"asserted(): value={value}")
             self.queue.put(value)
 
-        @Actor.handler()
+        @Tasker.handler()
         def use_asserted(self, value):
             logging.debug(f"use_asserted(): value={value}")
             self.asserted(value)
 
-        @Actor.handler(guarded=False)
-        def use_other_not_guarded(self, actor_tests: "ActorTests", amount,
+        @Tasker.handler(guarded=False)
+        def use_other_not_guarded(self, tasker_tests: "TaskerTests", amount,
                                   value):
             logging.debug(f"use_other_not_guarded(): value={value}")
             for _ in range(amount):
-                actor_tests.assertTrue(self.not_guarded(value).done())
+                tasker_tests.assertTrue(self.not_guarded(value).done())
 
-        @Actor.handler(guarded=True)
-        def use_other_guarded(self, actor_tests: "ActorTests", amount, value):
+        @Tasker.handler(guarded=True)
+        def use_other_guarded(self, tasker_tests: "TaskerTests", amount, value):
             logging.debug(f"use_other_guarded(): value={value}")
             for _ in range(amount):
-                actor_tests.assertTrue(self.guarded(value).done())
+                tasker_tests.assertTrue(self.guarded(value).done())
 
 
 if __name__ == "__main__":

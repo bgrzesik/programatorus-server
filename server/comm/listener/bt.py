@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 
 import bluetooth as bt
 
-from ...actor import Actor
+from ...tasker import Tasker
 from .listener import SocketListener
 
 import dbus
@@ -68,7 +68,7 @@ class PairingClient(ABC):
         raise NotImplementedError
 
 
-class PairingAgent(Actor):
+class PairingAgent(Tasker):
 
     def __init__(self, client: PairingClient):
         super().__init__()
@@ -94,32 +94,32 @@ class PairingAgent(Actor):
     def pair(self):
         pass
 
-    @Actor.handler()
+    @Tasker.handler()
     def _on_pair(self, device, pin):
         logging.debug("_on_pair()")
         self._client.confirm_pin(pin) \
             .add_done_callback(functools.partial(self._trust, device))
 
-    @Actor.handler()
+    @Tasker.handler()
     def _trust(self, device, fut):
         logging.debug("_trust()")
         if fut.result():
             self._agent.set_trusted(device)
 
 
-class BluetoothListener(SocketListener, Actor):
+class BluetoothListener(SocketListener, Tasker):
     UUID = "0446eb5c-d775-11ec-9d64-0242ac120002"
 
     def __init__(self, client, wrap_transport=True):
         SocketListener.__init__(self, client, wrap_transport=wrap_transport)
 
-    @Actor.assert_executor()
+    @Tasker.assert_executor()
     def _set_discoverable(self, discoverable=True):
         setting = "on" if discoverable else "off"
         logging.info(f"set_discoverable(): discoverable={discoverable}")
         subprocess.call(["bluetoothctl", "discoverable", setting])
 
-    @Actor.assert_executor()
+    @Tasker.assert_executor()
     def create_socket(self) -> socket.socket:
         logging.info("listen():")
         server = bt.BluetoothSocket(bt.RFCOMM)

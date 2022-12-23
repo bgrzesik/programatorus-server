@@ -1,7 +1,7 @@
 import logging
 from concurrent.futures import Future
 
-from ..actor import Actor
+from ..tasker import Tasker
 from ..comm.protocol import OnFileUpload, FileUpload
 from ..target.constants import FIRMWARE_PATH
 
@@ -38,15 +38,15 @@ class UploadedFile(object):
         return FileUpload.Result.OK
 
 
-class FileStore(Actor):
+class FileStore(Tasker):
 
     def __init__(self):
-        Actor.__init__(self)
+        Tasker.__init__(self)
         self._store = {}
         self._next_upload_id = 0
         self._uploads = {}
 
-    @Actor.assert_executor()
+    @Tasker.assert_executor()
     def start_upload(self, name):
         logging.debug(f"start_upload(): name={name}")
         new_file = UploadedFile(name, rw=True)
@@ -58,11 +58,11 @@ class FileStore(Actor):
 
         return uid
 
-    @Actor.assert_executor()
+    @Tasker.assert_executor()
     def get_upload(self, uid) -> UploadedFile:
         return self._uploads[uid]
 
-    @Actor.handler()
+    @Tasker.handler()
     def on_request(self, request: FileUpload.Request) -> FileUpload.Response:
         if isinstance(request, FileUpload.Start):
             start: FileUpload.Start = request

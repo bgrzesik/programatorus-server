@@ -12,7 +12,7 @@ class Runner(object):
         def init_thread():
             nonlocal self
             setattr(self._thread_local, CORRECT_THREAD_ATTR, True)
-            logging.debug(f"init_actor_thread(): Starting thread {self.name}")
+            logging.debug(f"init_thread(): Starting thread {self.name}")
 
         self.name: str = name
         self._guards: Set[object] = set()
@@ -110,10 +110,10 @@ class Runner(object):
         self._executor.shutdown()
 
 
-class Actor(object):
+class Tasker(object):
     def __init__(self,
                  runner: Optional[Runner] = None,
-                 parent: Optional["Actor"] = None):
+                 parent: Optional["Tasker"] = None):
         assert not (runner is not None and parent is not None)
         if runner is not None:
             self._runner = runner
@@ -123,7 +123,7 @@ class Actor(object):
         else:
             self._runner = Runner(name=str(self))
 
-    def is_actor_thread(self):
+    def is_tasker_thread(self):
         return self._runner.is_valid_thread()
 
     @property
@@ -140,7 +140,7 @@ class Actor(object):
         def decorator(func):
             @functools.wraps(func)
             def wrapper(*args, timeout=None, force_schedule=False, **kwargs):
-                self: Actor = args[0]
+                self: Tasker = args[0]
                 force_schedule = force_schedule or force_schedule_parent
 
                 if guarded:
@@ -169,11 +169,11 @@ class Actor(object):
         def decorator(func):
             @functools.wraps(func)
             def wrapper(*args, **kwargs):
-                self: Actor = args[0]
-                if not self.is_actor_thread():
+                self: Tasker = args[0]
+                if not self.is_tasker_thread():
                     logging.warning(
-                        f"{func} was called on invalid non-actor thread")
-                    assert self.is_actor_thread()
+                        f"{func} was called on invalid non-task-runner thread")
+                    assert self.is_tasker_thread()
                     if hard:
                         raise SystemError
 

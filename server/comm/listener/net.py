@@ -1,7 +1,7 @@
 import logging
 import socket
 
-from ...actor import Actor
+from ...tasker import Tasker
 from .listener import SocketListener
 
 
@@ -9,7 +9,7 @@ class NetworkListener(SocketListener):
     def __init__(self, client, wrap_transport=True):
         super().__init__(client, wrap_transport=wrap_transport)
 
-    @Actor.assert_executor()
+    @Tasker.assert_executor()
     def create_socket(self):
         logging.info("listen():")
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

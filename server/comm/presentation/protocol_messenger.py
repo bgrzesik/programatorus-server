@@ -1,7 +1,7 @@
 import logging
 from concurrent.futures import Future
 
-from ...actor import Runner
+from ...tasker import Runner
 from ..connection import ConnectionState
 from .messenger import (
     IMessenger,
