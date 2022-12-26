@@ -18,7 +18,7 @@ class RequestHandler(object):
     def flash(self, args):
         cmd = [
             "-f",
-            "interface/raspberrypi-swd.cfg",
+            "/home/pi/bootloader/my_rpi.cfg",
             "-c",
             "transport select swd",
             "-f",
@@ -50,8 +50,11 @@ class Proxy(object):
         return self.executor.submit(self.resend, request, args)
 
     def resend(self, request, args):
+        print("[Proxy]", request, args)
 
         res = self.service.start_async(request, args).result()
+
+        print(res)
 
         return res
 
