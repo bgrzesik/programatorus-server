@@ -33,8 +33,8 @@ class Menu(object):
     def init_items(self):
         return [
             ProgramFlashMenuItem(self, "Flash Device"),
-            ChoooseBoardMenuItem(self, f"board: {self.chosen_board}"),
-            ChoooseFirmwareMenuItem(self, f"board: {self.chosen_board}"),
+            ChooseBoardMenuItem(self, f"board: {self.chosen_board}"),
+            ChooseFirmwareMenuItem(self, f"board: {self.chosen_board}"),
             PairDialog(),
         ]
 
@@ -134,7 +134,7 @@ class ProgramFlashMenuItem(MenuItem):
             return
 
         def show_result_cb(future):
-            if "Verify OK" in future.result():
+            if "Verified OK" in future.result():
                 self.state = 'SUCCESS'
             else:
                 self.state = 'FAILED'
@@ -173,7 +173,7 @@ class ProgramFlashMenuItem(MenuItem):
 
 ALL = 0
 FAV = 1
-class ChoooseBoardMenuItem(MenuItem):
+class ChooseBoardMenuItem(MenuItem):
     def __init__(self, parent: Menu, header):
         self.parent = parent
 
@@ -187,6 +187,7 @@ class ChoooseBoardMenuItem(MenuItem):
 
         self.indices = [0, 0]
         self.state = FAV if self.values[FAV] else ALL
+        self.parent.chosen_board = self.chosen
 
         MenuItem.__init__(self, [], header)
 
@@ -211,7 +212,7 @@ class ChoooseBoardMenuItem(MenuItem):
         self.parent.chosen_board = self.chosen
 
     def on_select(self):
-        self.state = FAV if self.state == ALL else ALL
+        self.state = FAV if (self.state == ALL and self.values[FAV]) else ALL
 
     def refresh(self):
         data = self.parent.boards_service.get()
@@ -222,7 +223,7 @@ class ChoooseBoardMenuItem(MenuItem):
         self.parent.chosen_board = self.chosen
 
 
-class ChoooseFirmwareMenuItem(MenuItem):
+class ChooseFirmwareMenuItem(MenuItem):
     def __init__(self, parent: Menu, header):
         self.parent = parent
 
@@ -236,6 +237,7 @@ class ChoooseFirmwareMenuItem(MenuItem):
 
         self.indices = [0, 0]
         self.state = FAV if self.values[FAV] else ALL
+        self.parent.chosen_firmware = self.chosen
 
         MenuItem.__init__(self, [], header)
 
@@ -261,7 +263,7 @@ class ChoooseFirmwareMenuItem(MenuItem):
         self.parent.chosen_firmware = self.chosen
 
     def on_select(self):
-        self.state = FAV if self.state == ALL else ALL
+        self.state = FAV if (self.state == ALL and self.values[FAV]) else ALL
 
     def refresh(self):
         data = self.parent.firmware_service.get()
