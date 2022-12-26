@@ -248,7 +248,7 @@ class ChoooseFirmwareMenuItem(MenuItem):
         return [
             f"< {self.chosen} >",
             f"{'[fav]      all    swap(x)' if self.state == FAV else ' fav      [all]   swap(x)'}"
-        ] if self.is_selected else [f"binary: {self.chosen}"]
+        ] if self.is_selected else [f"firmware: {self.chosen}"]
 
     def on_next(self):
         self.indices[self.state] += 1
