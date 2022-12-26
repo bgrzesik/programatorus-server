@@ -1,4 +1,3 @@
-
 syntax = "proto3";
 
 package programus.proto;
@@ -6,7 +5,6 @@ package programus.proto;
 import "google/protobuf/empty.proto";
 
 
-// TODO(bgrzesik): delete me
 message TestMessage {
   string value = 1;
 }
@@ -41,8 +39,6 @@ message PutBoardsResponse {
   bool success = 1;
 }
 
-
-
 message Firmware {
   string name = 1;
   bool favourite = 2;
@@ -65,7 +61,6 @@ message PutFirmwareResponse {
   bool success = 1;
 }
 
-
 message FlashRequest {
     Firmware firmware = 1;
     Board board = 2;
@@ -75,7 +70,6 @@ message FlashResponse {
     bool success = 1;
     string message = 2;
 }
-
 
 message DeviceUpdateStatus {
   enum Status {
@@ -176,9 +170,6 @@ message GenericMessage {
 
     FlashRequest flashRequest = 230;
     FlashResponse flashResponse = 231;
-
-
-    // Response: Ok(102)
 
     DeviceUpdateStatus deviceUpdateStatus = 202;
     FileUpload fileUpload = 203;
