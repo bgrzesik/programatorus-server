@@ -180,13 +180,10 @@ class ChooseBoardMenuItem(MenuItem):
         self.width = 128
 
         data = parent.boards_service.get()
-        self.values = [
-            list(map(lambda b: b.name, data.all)),
-            list(map(lambda b: b.name, data.favorites))
-        ]
+        self.apply_lists(data)
 
         self.indices = [0, 0]
-        self.state = FAV if self.values[FAV] else ALL
+        self.state = FAV if len(self.values[FAV]) > 0 else ALL
         self.parent.chosen_board = self.chosen
 
         MenuItem.__init__(self, [], header)
@@ -216,11 +213,17 @@ class ChooseBoardMenuItem(MenuItem):
 
     def refresh(self):
         data = self.parent.boards_service.get()
+        self.apply_lists(data)
+
+    def apply_lists(self, data):
         self.values = [
             list(map(lambda b: b.name, data.all)),
             list(map(lambda b: b.name, data.favorites))
         ]
-        self.parent.chosen_board = self.chosen
+        if len(self.values[ALL]) == 0:
+            self.values[ALL].append("[None]")
+        if len(self.values[FAV]) == 0:
+            self.values[FAV].append("[None]")
 
 
 class ChooseFirmwareMenuItem(MenuItem):
@@ -230,13 +233,10 @@ class ChooseFirmwareMenuItem(MenuItem):
         self.width = 128
 
         data = parent.firmware_service.get()
-        self.values = [
-            list(map(lambda b: b.name, data.all)),
-            list(map(lambda b: b.name, data.favorites))
-        ]
+        self.apply_lists(data)
 
         self.indices = [0, 0]
-        self.state = FAV if self.values[FAV] else ALL
+        self.state = FAV if len(self.values[FAV]) > 0 else ALL
         self.parent.chosen_firmware = self.chosen
 
         MenuItem.__init__(self, [], header)
@@ -263,13 +263,20 @@ class ChooseFirmwareMenuItem(MenuItem):
         self.parent.chosen_firmware = self.chosen
 
     def on_select(self):
-        self.state = FAV if (self.state == ALL and self.values[FAV]) else ALL
+        self.state = FAV if self.state == ALL else ALL
 
     def refresh(self):
         data = self.parent.firmware_service.get()
+        self.apply_lists(data)
+        self.parent.chosen_firmware = self.chosen
+
+    def apply_lists(self, data):
         self.values = [
             list(map(lambda b: b.name, data.all)),
             list(map(lambda b: b.name, data.favorites))
         ]
-        self.parent.chosen_firmware = self.chosen
+        if len(self.values[ALL]) == 0:
+            self.values[ALL].append("[None]")
+        if len(self.values[FAV]) == 0:
+            self.values[FAV].append("[None]")
 

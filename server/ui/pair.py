@@ -32,7 +32,7 @@ class PairDialog(MenuItem, PairingClient):
 
     @property
     def visible_text(self):
-        return self.text + "\n" + "YES (X)            NO (<-)"
+        return self.text + "\n" + "YES (X)            NO (<)"
 
     def on_select(self):
         if self._pin is None:
@@ -42,7 +42,7 @@ class PairDialog(MenuItem, PairingClient):
             self._pin = None
             self.text = "ready for pairing"
 
-    def on_back(self):
+    def on_prev(self):
         if self._pin is None:
             pass
         else:
@@ -57,8 +57,8 @@ class PairDialog(MenuItem, PairingClient):
 
             draw.text((x + 1, y), self.text, font=FONT, fill=1)
             if "Pin" in self.text:
-                draw.text((x + 1, y + 8), "YES (X)            NO (<-)", font=FONT, fill=1)
+                draw.text((x + 1, y + 8), "YES (X)            NO (<)", font=FONT, fill=1)
             else:
-                draw.text((x + 1, y + 8), "use mobile device", font=FONT, fill=1)
+                draw.text((x + 1, y + 8), "initiate with mobile", font=FONT, fill=1)
         else:
             draw.text((x + 1, y), self.header, font=FONT, fill=1)
