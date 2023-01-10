@@ -48,8 +48,8 @@ class Debugger(Tasker):
         assert self._poller is None and self._gdb is None
 
         openocd_cmd = "openocd " \
-            "-c 'gdb_port pipe'" \
-            "-f interface/raspberrypi-swd.cfg" \
+            "-c 'gdb_port pipe' " \
+            "-f interface/raspberrypi-swd.cfg " \
             f"-f target/{self._board}"
 
         self._gdb = subprocess.Popen(
@@ -74,6 +74,8 @@ class Debugger(Tasker):
         self._is_running = True
         self._poller = threading.Thread(target=self._poller_thread)
         self._poller.start()
+
+        self.send_command(f"target extended-remote | {openocd_cmd}\n")
 
     @Tasker.handler(guarded=True)
     def send_command(self, command: str):
